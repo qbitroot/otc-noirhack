@@ -1,0 +1,32 @@
+**/target/*_witness.gz
+**/target/*_circuit.json
+**/target/*_proof
+
+*.tmp.txt
+
+# Aider data
+.aider.*
+
+node_modules
+.env
+
+# Hardhat artifacts, cache, ...
+dist
+
+# TypeChain files
+/typechain
+/typechain-types
+
+# solidity-coverage files
+/coverage
+/coverage.json
+
+# Hardhat Ignition default folder for deployments against a local node
+/ignition
+
+
+
+
+.nx/cache
+.nx/workspace-data
+
