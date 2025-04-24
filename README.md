@@ -20,6 +20,8 @@ For NoirHack the focus is on business logic of pSymm. The high-level flow is lik
     - **No Dispute:** The party owing PnL uses the CTC circuit to split their collateral commitment into two: one for the PnL amount and one for the remaining collateral. They privately send the secret data for the PnL commitment to the counterparty. Both parties can then withdraw their respective funds (original collateral +/- PnL) using the CTA circuit.
     - **Dispute:** One party initiates a dispute by revealing the entire signed message history to the SettleMaker contract. Validators review the session based on predefined rules and vote. The party found at fault is slashed.
 
+See also: [pSymm presentation](https://github.com/qbitroot/otc-noirhack/blob/main/docs/pSymm.pdf).
+
 ## Circuits
 
 The core privacy feature relies on SNARKs (via Noir circuits) to verify knowledge of secrets for commitments without revealing the link between deposits (commitments) and withdrawals (nullifiers).
