@@ -3,7 +3,7 @@ mod config;
 use dep::aztec::macros::aztec;
 
 #[aztec]
-pub contract TokenBridge {
+pub contract pSymm {
     use crate::config::Config;
 
     use dep::aztec::prelude::{AztecAddress, EthAddress, PublicImmutable};
