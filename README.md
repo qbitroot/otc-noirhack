@@ -2,16 +2,16 @@
 
 pSymm -- private & symmetric OTC derivatives trading project. The idea is to allow two parties trade any asset in a trustless, permissionless, decentralized way. The high-level architecture of the platform:
 
-- pSymm: the contract holding collaterals of parties, managing their funds using Noir circuits. It facilitates private deposits, internal transfers, and withdrawals.
-- SettleMaker: a dispute resolution contract, using validators, staking, slashing for voting on disputed trading sessions. To dispute a session, parties must reveal their trading activity.
-- Offchain infra: client UI with Metamask integration, a counterparty (Solver), etc.
+- pSymm: Aztec.nr L2 contract integrating TokenPortal.nr and SettleMaker.sol for both happy and disputed trading sessions.
+- SettleMaker: a dispute resolution contract. Uses validators, staking, slashing mechanism for voting on disputed trading sessions. To dispute a session, parties must reveal their trading activity.
+- Offchain infra: web UI (WIP) utilizing MetaMask and Aztec PXE for 
 
-For NoirHack the focus is on business logic of pSymm. The high-level flow is like this:
+The high-level flow is like this:
 
-1.  **Discovery:** Trader finds a Solver via an onchain Party Registry.
+1.  **Discovery:** Trader finds a Solver using a PartyRegistry.sol contract (publicly writable IP storage).
 2.  **Connection:** Trader connects to the Solver's websocket endpoint.
 3.  **Logon & Collateralization:**
-    - Trader makes an onchain deposit (creating a commitment) and sends a Logon message (including the deposit proof) to the Solver.
+    - Trader makes an onchain deposit through TokenPortal and sends a Logon message (including the deposit proof) to the Solver.
     - Solver verifies the Trader's deposit, makes their own deposit (creating their commitment), and sends a Logon message back.
 4.  **Trading:**
     - Trader sends quote requests and orders; Solver quotes and fills.
