@@ -18,7 +18,7 @@ import {
   TokenPortalBytecode,
 } from '@aztec/l1-artifacts';
 import { TokenContract } from '@aztec/noir-contracts.js/Token';
-import { TokenBridgeContract } from '@aztec/noir-contracts.js/TokenBridge';
+import { pSymmContract } from './contracts/psymm/src/artifacts/pSymm';
 
 import { getContract } from 'viem';
 
@@ -75,7 +75,7 @@ async function addMinter(l1TokenContract: EthAddress, l1TokenHandler: EthAddress
 
 // --- Main script ---
 async function main() {
-  const logger = createLogger('aztec:token-bridge-tutorial');
+  const logger = createLogger('psymm');
   const pxe = await setupSandbox();
   const wallets = await getInitialTestAccountsWallets(pxe);
   const ownerWallet = wallets[0];
@@ -113,7 +113,7 @@ async function main() {
   });
 
   // Deploy L2 bridge contract
-  const l2BridgeContract = await TokenBridgeContract.deploy(
+  const l2BridgeContract = await pSymmContract.deploy(
     ownerWallet,
     l2TokenContract.address,
     l1PortalContractAddress,
