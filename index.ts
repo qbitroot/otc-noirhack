@@ -144,7 +144,7 @@ async function main() {
   );
 
   // Bridge tokens from L1 to L2 (publicly)
-  const claim = await l1PortalManager.bridgeTokensPublic(ownerAztecAddress, MINT_AMOUNT, true);
+  const claim = await l1PortalManager.bridgeTokensPrivate(ownerAztecAddress, MINT_AMOUNT, true);
   logger.info(`Tokens bridged from L1 to L2`);
 
   // Do 2 unrelated actions because
@@ -155,26 +155,25 @@ async function main() {
 
   // Claim tokens on Aztec (L2)
   await l2BridgeContract.methods
-    .claim_public(ownerAztecAddress, MINT_AMOUNT, claim.claimSecret, claim.messageLeafIndex)
+    .claim_private(ownerAztecAddress, MINT_AMOUNT, claim.claimSecret, claim.messageLeafIndex)
     .send()
     .wait();
-  const balance = await l2TokenContract.methods.balance_of_public(ownerAztecAddress).simulate();
-  logger.info(`Public L2 balance of ${ownerAztecAddress} is ${balance}`);
+  const balance = await l2TokenContract.methods.balance_of_private(ownerAztecAddress).simulate();
+  logger.info(`Private L2 balance of ${ownerAztecAddress} is ${balance}`);
 
   // Setup withdrawal
   const withdrawAmount = 9n;
   const nonce = Fr.random();
 
   // Give approval to bridge to burn owner's funds:
-  const authwit = await ownerWallet.setPublicAuthWit(
+  const authwit = await ownerWallet.createAuthWit(
     {
       caller: l2BridgeContract.address,
-      action: l2TokenContract.methods.burn_public(ownerAztecAddress, withdrawAmount, nonce),
+      action: l2TokenContract.methods.burn_private(ownerAztecAddress, withdrawAmount, nonce),
     },
-    true,
   );
-  await authwit.send().wait();
-  logger.info('Public authwit set for L2 withdrawal burn');
+  // await authwit.send().wait();
+  // logger.info('Public authwit set for L2 withdrawal burn');
 
   // Start withdrawal process on Aztec (L2)
   const l2ToL1Message = await l1PortalManager.getL2ToL1MessageLeaf(
@@ -184,8 +183,8 @@ async function main() {
     EthAddress.ZERO,
   );
   const l2TxReceipt = await l2BridgeContract.methods
-    .exit_to_l1_public(EthAddress.fromString(ownerEthAddress), withdrawAmount, EthAddress.ZERO, nonce)
-    .send()
+    .exit_to_l1_private(l2TokenContract.address, EthAddress.fromString(ownerEthAddress), withdrawAmount, EthAddress.ZERO, nonce)
+    .send({authWitnesses: [authwit]})
     .wait();
   logger.info('Withdrawal initiated on L2');
 
