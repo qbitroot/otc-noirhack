@@ -1,7 +1,7 @@
 {
   "name": "otc-noirhack",
   "version": "1.0",
-  "type": "module"
+  "type": "module",
   "author": "Vladyslav <web.user@ukr.net>",
   "license": "MIT",
   "dependencies": {
@@ -20,5 +20,5 @@
   },
   "scripts": {
     "start": "node --import tsx index.ts"
-  },
+  }
 }
