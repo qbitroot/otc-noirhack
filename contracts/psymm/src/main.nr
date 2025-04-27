@@ -9,7 +9,7 @@ pub contract pSymm {
     use dep::aztec::prelude::{AztecAddress, EthAddress, PublicImmutable};
 
     use dep::token_portal_content_hash_lib::{
-        get_mint_to_private_content_hash, get_mint_to_public_content_hash,
+        get_mint_to_private_content_hash,
         get_withdraw_content_hash,
     };
 
@@ -34,45 +34,6 @@ pub contract pSymm {
     #[view]
     fn get_config() -> Config {
         storage.config.read()
-    }
-
-    #[public]
-    #[view]
-    fn get_config_public() -> Config {
-        storage.config.read()
-    }
-
-    // Consumes a L1->L2 message and calls the token contract to mint the appropriate amount publicly
-    #[public]
-    fn claim_public(to: AztecAddress, amount: u128, secret: Field, message_leaf_index: Field) {
-        let content_hash = get_mint_to_public_content_hash(to, amount);
-
-        let config = storage.config.read();
-
-        // Consume message and emit nullifier
-        context.consume_l1_to_l2_message(content_hash, secret, config.portal, message_leaf_index);
-
-        // Mint tokens
-        Token::at(config.token).mint_to_public(to, amount).call(&mut context);
-    }
-
-    // Burns the appropriate amount of tokens and creates a L2 to L1 withdraw message publicly
-    // Requires `msg.sender` to give approval to the bridge to burn tokens on their behalf using witness signatures
-    #[public]
-    fn exit_to_l1_public(
-        recipient: EthAddress, // ethereum address to withdraw to
-        amount: u128,
-        caller_on_l1: EthAddress, // ethereum address that can call this function on the L1 portal (0x0 if anyone can call)
-        nonce: Field, // nonce used in the approval message by `msg.sender` to let bridge burn their tokens on L2
-    ) {
-        let config = storage.config.read();
-
-        // Send an L2 to L1 message
-        let content = get_withdraw_content_hash(recipient, amount, caller_on_l1);
-        context.message_portal(config.portal, content);
-
-        // Burn tokens
-        Token::at(config.token).burn_public(context.msg_sender(), amount, nonce).call(&mut context);
     }
 
     /// Claims the bridged tokens and makes them accessible in private. Note that recipient's address is not revealed

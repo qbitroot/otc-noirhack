@@ -139,23 +139,14 @@ export class pSymmContract extends ContractBase {
     /** claim_private(recipient: struct, amount: integer, secret_for_L1_to_L2_message_consumption: field, message_leaf_index: field) */
     claim_private: ((recipient: AztecAddressLike, amount: (bigint | number), secret_for_L1_to_L2_message_consumption: FieldLike, message_leaf_index: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
-    /** claim_public(to: struct, amount: integer, secret: field, message_leaf_index: field) */
-    claim_public: ((to: AztecAddressLike, amount: (bigint | number), secret: FieldLike, message_leaf_index: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
-
     /** constructor(token: struct, portal: struct) */
     constructor: ((token: AztecAddressLike, portal: EthAddressLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
     /** exit_to_l1_private(token: struct, recipient: struct, amount: integer, caller_on_l1: struct, nonce: field) */
     exit_to_l1_private: ((token: AztecAddressLike, recipient: EthAddressLike, amount: (bigint | number), caller_on_l1: EthAddressLike, nonce: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
-    /** exit_to_l1_public(recipient: struct, amount: integer, caller_on_l1: struct, nonce: field) */
-    exit_to_l1_public: ((recipient: EthAddressLike, amount: (bigint | number), caller_on_l1: EthAddressLike, nonce: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
-
     /** get_config() */
     get_config: (() => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
-
-    /** get_config_public() */
-    get_config_public: (() => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
     /** public_dispatch(selector: field) */
     public_dispatch: ((selector: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
