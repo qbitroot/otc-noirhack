@@ -70,14 +70,14 @@ export class pSymmContract extends ContractBase {
   /**
    * Creates a tx to deploy a new instance of this contract.
    */
-  public static deploy(wallet: Wallet, token: AztecAddressLike, portal: EthAddressLike) {
+  public static deploy(wallet: Wallet, token: AztecAddressLike) {
     return new DeployMethod<pSymmContract>(PublicKeys.default(), wallet, pSymmContractArtifact, pSymmContract.at, Array.from(arguments).slice(1));
   }
 
   /**
    * Creates a tx to deploy a new instance of this contract using the specified public keys hash to derive the address.
    */
-  public static deployWithPublicKeys(publicKeys: PublicKeys, wallet: Wallet, token: AztecAddressLike, portal: EthAddressLike) {
+  public static deployWithPublicKeys(publicKeys: PublicKeys, wallet: Wallet, token: AztecAddressLike) {
     return new DeployMethod<pSymmContract>(publicKeys, wallet, pSymmContractArtifact, pSymmContract.at, Array.from(arguments).slice(2));
   }
 
@@ -136,14 +136,8 @@ export class pSymmContract extends ContractBase {
   /** Type-safe wrappers for the public methods exposed by the contract. */
   public declare methods: {
     
-    /** claim_private(recipient: struct, amount: integer, secret_for_L1_to_L2_message_consumption: field, message_leaf_index: field) */
-    claim_private: ((recipient: AztecAddressLike, amount: (bigint | number), secret_for_L1_to_L2_message_consumption: FieldLike, message_leaf_index: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
-
-    /** constructor(token: struct, portal: struct) */
-    constructor: ((token: AztecAddressLike, portal: EthAddressLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
-
-    /** exit_to_l1_private(token: struct, recipient: struct, amount: integer, caller_on_l1: struct, nonce: field) */
-    exit_to_l1_private: ((token: AztecAddressLike, recipient: EthAddressLike, amount: (bigint | number), caller_on_l1: EthAddressLike, nonce: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
+    /** constructor(token: struct) */
+    constructor: ((token: AztecAddressLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
     /** get_config() */
     get_config: (() => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
