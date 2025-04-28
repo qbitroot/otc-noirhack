@@ -1,4 +1,6 @@
 import { getInitialTestAccountsWallets } from '@aztec/accounts/testing';
+import { deriveKeys } from '@aztec/aztec.js';
+import { computePartialAddress } from '@aztec/stdlib/contract';
 import {
   EthAddress,
   Fr,
@@ -31,7 +33,7 @@ const { ETHEREUM_HOSTS = 'http://localhost:8545' } = process.env;
 const { walletClient, publicClient } = createL1Clients(ETHEREUM_HOSTS.split(','), MNEMONIC);
 const ownerEthAddress = walletClient.account.address;
 
-const MINT_AMOUNT = BigInt(1e15);
+const MINT_AMOUNT = BigInt(1e12);
 
 const setupSandbox = async () => {
   const { PXE_URL = 'http://localhost:8080' } = process.env;
@@ -94,11 +96,27 @@ async function main() {
     .send()
     .deployed();
   logger.info(`L2 token contract deployed at ${l2TokenContract.address}`);
-  const psymmContract = await pSymmContract.deploy(ownerWallet, l2TokenContract.address)
-    .send()
-    .deployed();
+  // Generate private key for pSymm contract and register in PXE service
+  const psymmSecretKey = Fr.random();
+  const psymmPublicKeys = (await deriveKeys(psymmSecretKey)).publicKeys;
+  
+  // Create deployment with public keys but don't send yet
+  const psymmDeployment = pSymmContract.deployWithPublicKeys(
+    psymmPublicKeys,
+    ownerWallet,
+    l2TokenContract.address
+  );
+  
+  // Get future instance to compute partial address
+  const psymmInstance = await psymmDeployment.getInstance();
+  
+  // Register account before deployment
+  await pxe.registerAccount(psymmSecretKey, await computePartialAddress(psymmInstance));
+  
+  // Now deploy
+  const psymmContract = await psymmDeployment.send().deployed();
   logger.info(`pSymm contract deployed at ${psymmContract.address}`);
-
+  
   // Deploy L1 token contract and setup L1TokenManager
   const l1TokenContract = await deployTestERC20();
   logger.info('erc20 contract deployed');
@@ -149,8 +167,8 @@ async function main() {
     logger,
   );
 
-  // Bridge tokens from L1 to L2 (publicly)
-  const claim = await l1PortalManager.bridgeTokensPublic(ownerAztecAddress, MINT_AMOUNT, true);
+  // Bridge tokens from L1 to L2 (privately)
+  const claim = await l1PortalManager.bridgeTokensPrivate(ownerAztecAddress, MINT_AMOUNT, true);
   logger.info(`Tokens bridged from L1 to L2`);
 
   // Do 2 unrelated actions because
@@ -161,41 +179,80 @@ async function main() {
 
   // Claim tokens on Aztec (L2)
   await l2BridgeContract.methods
-    .claim_public(ownerAztecAddress, MINT_AMOUNT, claim.claimSecret, claim.messageLeafIndex)
+    .claim_private(ownerAztecAddress, MINT_AMOUNT, claim.claimSecret, claim.messageLeafIndex)
     .send()
     .wait();
-  const balance = await l2TokenContract.methods.balance_of_public(ownerAztecAddress).simulate();
-  logger.info(`Public L2 balance of ${ownerAztecAddress} is ${balance}`);
+  const balance = await l2TokenContract.methods.balance_of_private(ownerAztecAddress).simulate();
+  logger.info(`Private L2 balance of ${ownerAztecAddress} is ${balance}`);
 
-  // Setup withdrawal
-  const withdrawAmount = 9n;
+  // Deposit tokens to custody ID 0 privately
+  const depositAmount = BigInt(100);
+  const custodyId = 0n;
+  const depositNonce = Fr.random();
+  
+  // Create private authwit for deposit
+  const authwitDeposit = await ownerWallet.createAuthWit(
+    {
+      caller: psymmContract.address,
+      action: l2TokenContract.methods.transfer_in_private(ownerAztecAddress, psymmContract.address, depositAmount, depositNonce),
+    },
+  );
+  logger.info('Private authwit created for L2 deposit transfer');
+  
+  // Perform deposit to custody ID 0 with authwit
+  await psymmContract.methods
+    .deposit(custodyId, depositAmount, depositNonce)
+    .send({ authWitnesses: [authwitDeposit] })
+    .wait();
+  logger.info(`Deposited ${depositAmount} tokens to custody ID ${custodyId} privately`);
+
+  // Check custody balance after deposit
+  const custodyBalance = await psymmContract.methods.get_custody_balance(custodyId).simulate();
+  logger.info(`Custody balance for ID ${custodyId} is ${custodyBalance}`);
+
+  // Withdraw tokens from custody ID 0
+  const withdrawAmount = BigInt(50);
+  await psymmContract.methods
+    .withdraw(custodyId, withdrawAmount)
+    .send()
+    .wait();
+  logger.info(`Withdrawn ${withdrawAmount} tokens from custody ID ${custodyId}`);
+  
+  const newBalanceAfterWithdraw = await l2TokenContract.methods.balance_of_private(ownerAztecAddress).simulate();
+  logger.info(`New L2 balance of ${ownerAztecAddress} after withdraw is ${newBalanceAfterWithdraw}`);
+
+  await l2TokenContract.methods.mint_to_public(ownerAztecAddress, 0n).send().wait();
+  await l2TokenContract.methods.mint_to_public(ownerAztecAddress, 0n).send().wait();
+  logger.info('Sent 2 dummy txs to advance L1->L2 message processing');
+
+
+  // Setup withdrawal to L1
+  const l1WithdrawAmount = 9n;
   const nonce = Fr.random();
 
-  // Give approval to bridge to burn owner's funds:
-  const authwit = await ownerWallet.setPublicAuthWit(
+  // Create private authwit for withdrawal
+  const authwit = await ownerWallet.createAuthWit(
     {
       caller: l2BridgeContract.address,
-      action: l2TokenContract.methods.burn_public(ownerAztecAddress, withdrawAmount, nonce),
+      action: l2TokenContract.methods.burn_private(ownerAztecAddress, l1WithdrawAmount, nonce),
     },
-    true,
   );
-  await authwit.send().wait();
-  logger.info('Public authwit set for L2 withdrawal burn');
+  logger.info('Private authwit created for L2 withdrawal burn');
 
   // Start withdrawal process on Aztec (L2)
   const l2ToL1Message = await l1PortalManager.getL2ToL1MessageLeaf(
-    withdrawAmount,
+    l1WithdrawAmount,
     EthAddress.fromString(ownerEthAddress),
     l2BridgeContract.address,
     EthAddress.ZERO,
   );
   const l2TxReceipt = await l2BridgeContract.methods
-    .exit_to_l1_public(EthAddress.fromString(ownerEthAddress), withdrawAmount, EthAddress.ZERO, nonce)
-    .send()
+    .exit_to_l1_private(l2TokenContract.address, EthAddress.fromString(ownerEthAddress), l1WithdrawAmount, EthAddress.ZERO, nonce)
+    .send({ authWitnesses: [authwit] })
     .wait();
-  logger.info('Withdrawal initiated on L2');
+  logger.info('Withdrawal initiated on L2 privately');
 
-  const newL2Balance = await l2TokenContract.methods.balance_of_public(ownerAztecAddress).simulate();
+  const newL2Balance = await l2TokenContract.methods.balance_of_private(ownerAztecAddress).simulate();
   logger.info(`New L2 balance of ${ownerAztecAddress} is ${newL2Balance}`);
 
   // Complete withdrawal process on L1
@@ -204,7 +261,7 @@ async function main() {
     l2ToL1Message,
   );
   await l1PortalManager.withdrawFunds(
-    withdrawAmount,
+    l1WithdrawAmount,
     EthAddress.fromString(ownerEthAddress),
     BigInt(l2TxReceipt.blockNumber!),
     l2ToL1MessageIndex,

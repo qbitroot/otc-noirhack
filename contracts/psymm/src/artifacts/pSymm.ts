@@ -115,21 +115,27 @@ export class pSymmContract extends ContractBase {
   }
   
 
-  public static get storage(): ContractStorageLayout<'config'> {
+  public static get storage(): ContractStorageLayout<'config' | 'custody_notes'> {
       return {
         config: {
       slot: new Fr(1n),
+    },
+custody_notes: {
+      slot: new Fr(3n),
     }
-      } as ContractStorageLayout<'config'>;
+      } as ContractStorageLayout<'config' | 'custody_notes'>;
     }
     
 
-  public static get notes(): ContractNotes<'UintNote'> {
+  public static get notes(): ContractNotes<'UintNote' | 'CustodyNote'> {
     return {
       UintNote: {
           id: new NoteSelector(0),
+        },
+CustodyNote: {
+          id: new NoteSelector(1),
         }
-    } as ContractNotes<'UintNote'>;
+    } as ContractNotes<'UintNote' | 'CustodyNote'>;
   }
   
 
@@ -139,14 +145,23 @@ export class pSymmContract extends ContractBase {
     /** constructor(token: struct) */
     constructor: ((token: AztecAddressLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
+    /** deposit(custody_id: field, amount: integer, nonce: field) */
+    deposit: ((custody_id: FieldLike, amount: (bigint | number), nonce: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
+
     /** get_config() */
     get_config: (() => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
+
+    /** get_custody_balance(custody_id: field) */
+    get_custody_balance: ((custody_id: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
     /** public_dispatch(selector: field) */
     public_dispatch: ((selector: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
     /** sync_notes() */
     sync_notes: (() => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
+
+    /** withdraw(custody_id: field, amount: integer) */
+    withdraw: ((custody_id: FieldLike, amount: (bigint | number)) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
   };
 
   

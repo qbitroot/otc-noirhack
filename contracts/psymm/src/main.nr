@@ -44,6 +44,26 @@ pub contract pSymm {
     fn get_config() -> Config {
         storage.config.read()
     }
+    #[private]
+    #[view]
+    fn get_custody_balance(custody_id: Field) -> u128 {
+        let cfg = storage.config.read();
+        let caller = context.msg_sender();
+        // Get notes without popping them
+        let notes = storage.custody_notes.at(caller).get_notes(
+            dep::aztec::prelude::NoteGetterOptions::new()
+                .set_limit(MAX_NOTES)
+                .select(CustodyNote::properties().custody_id, Comparator.EQ, custody_id)
+        );
+
+        let mut total_amount = 0 as u128;
+        for i in 0..MAX_NOTES {
+            if i < notes.len() {
+                total_amount += notes.get_unchecked(i).note.amount;
+            }
+        }
+        total_amount
+    }
 
     /// Deposit `amount` of L2 token into private custody under `custody_id`
     #[private]
@@ -94,7 +114,7 @@ pub contract pSymm {
         // Transfer `amount` of L2 token back to caller (private)
         let cfg = storage.config.read();
         Token::at(cfg.token)
-            .transfer(caller, amount)
+            .transfer_in_private(context.this_address(), caller, amount, 0)
             .call(&mut context);
     }
 }
