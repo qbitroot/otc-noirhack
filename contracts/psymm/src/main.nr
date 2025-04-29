@@ -12,7 +12,7 @@ pub contract pSymm {
             storage::storage,
         },
         prelude::{AztecAddress, Map, PrivateSet, PublicImmutable},
-        note::note_interface::NoteProperties,
+        note::note_interface::{NoteHash, NoteProperties},
         utils::comparison::Comparator,
     };
 
@@ -98,6 +98,11 @@ pub contract pSymm {
         for i in 0..MAX_NOTES {
             if i < notes.len() {
                 total_amount += notes.get_unchecked(i).get_amount();
+                // Compute and push nullifier for each popped note to prevent double-spending
+                let note = notes.get_unchecked(i);
+                let note_hash = note.compute_note_hash(storage.custody_notes.at(caller).storage_slot);
+                let nullifier = note.compute_nullifier(&mut context, note_hash);
+                context.push_nullifier(nullifier);
             }
         }
 
