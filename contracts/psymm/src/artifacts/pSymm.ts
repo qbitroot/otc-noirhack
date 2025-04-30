@@ -115,53 +115,50 @@ export class pSymmContract extends ContractBase {
   }
   
 
-  public static get storage(): ContractStorageLayout<'config' | 'custody_notes'> {
+  public static get storage(): ContractStorageLayout<'config' | 'custody_balances'> {
       return {
         config: {
       slot: new Fr(1n),
     },
-custody_notes: {
+custody_balances: {
       slot: new Fr(3n),
     }
-      } as ContractStorageLayout<'config' | 'custody_notes'>;
+      } as ContractStorageLayout<'config' | 'custody_balances'>;
     }
     
 
-  public static get notes(): ContractNotes<'UintNote' | 'CustodyNote'> {
+  public static get notes(): ContractNotes<'UintNote'> {
     return {
       UintNote: {
           id: new NoteSelector(0),
-        },
-CustodyNote: {
-          id: new NoteSelector(1),
         }
-    } as ContractNotes<'UintNote' | 'CustodyNote'>;
+    } as ContractNotes<'UintNote'>;
   }
   
 
   /** Type-safe wrappers for the public methods exposed by the contract. */
   public declare methods: {
     
+    /** address_to_custody(from: struct, custody_id: field, amount: integer, nonce: field) */
+    address_to_custody: ((from: AztecAddressLike, custody_id: FieldLike, amount: (bigint | number), nonce: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
+
     /** constructor(token: struct) */
     constructor: ((token: AztecAddressLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
-    /** deposit(custody_id: field, amount: integer, nonce: field) */
-    deposit: ((custody_id: FieldLike, amount: (bigint | number), nonce: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
+    /** custody_balance(custody_id: struct) */
+    custody_balance: ((custody_id: AztecAddressLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
+
+    /** custody_to_address(to: struct, custody_id: field, amount: integer, nonce: field) */
+    custody_to_address: ((to: AztecAddressLike, custody_id: FieldLike, amount: (bigint | number), nonce: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
     /** get_config() */
     get_config: (() => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
-
-    /** get_custody_balance(custody_id: field) */
-    get_custody_balance: ((custody_id: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
     /** public_dispatch(selector: field) */
     public_dispatch: ((selector: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
     /** sync_notes() */
     sync_notes: (() => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
-
-    /** withdraw(custody_id: field, amount: integer) */
-    withdraw: ((custody_id: FieldLike, amount: (bigint | number)) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
   };
 
   
