@@ -24,7 +24,6 @@ import { TokenContract } from '@aztec/noir-contracts.js/Token';
 import { TokenBridgeContract } from '@aztec/noir-contracts.js/TokenBridge';
 import { pSymmContract } from './contracts/psymm/src/artifacts/pSymm';
 
-
 import { getContract } from 'viem';
 
 // --- Utility functions ---
@@ -98,26 +97,13 @@ async function main() {
     .deployed();
   logger.info(`L2 token contract deployed at ${l2TokenContract.address}`);
   // Generate private key for pSymm contract and register in PXE service
-  const psymmSecretKey = Fr.random();
-  const psymmPublicKeys = (await deriveKeys(psymmSecretKey)).publicKeys;
   
   // Create deployment with public keys but don't send yet
-  const psymmDeployment = pSymmContract.deployWithPublicKeys(
-    psymmPublicKeys,
+  const psymmContract = await pSymmContract.deploy(
     ownerWallet,
     l2TokenContract.address
-  );
-  
-  // Get future instance to compute partial address
-  const psymmInstance = await psymmDeployment.getInstance();
-  
-  // Register account before deployment
-  await pxe.registerAccount(psymmSecretKey, await computePartialAddress(psymmInstance));
-  // await pxe.registerContract({ instance: psymmInstance, artifact: pSymmContract});
-  // await pxe.registerRec({ instance: psymmInstance, artifact: pSymmContract});
-  
-  // Now deploy
-  const psymmContract = await psymmDeployment.send().deployed();
+  ).send().deployed();
+
   logger.info(`pSymm contract deployed at ${psymmContract.address}`);
   
   // Deploy L1 token contract and setup L1TokenManager
