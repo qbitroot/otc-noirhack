@@ -20,8 +20,10 @@ pub contract pSymm {
     };
 
     use dep::token::Token;
-    use dep::token::types::balance_set::BalanceSet;
     use dep::types::traits::FromField;
+    use dep::easy_private_state::EasyPrivateUint;
+    use dep::value_note::balance_utils;
+
 
     use crate::config::Config;
 
@@ -29,8 +31,7 @@ pub contract pSymm {
     struct Storage<Context> {
         /// L2 token address for custody operations
         config: PublicImmutable<Config, Context>,
-        /// AztecAddress is Field, custody_id is Field
-        custody_balances: Map<AztecAddress, BalanceSet<Context>, Context>,
+        custody_balances: Map<Field, EasyPrivateUint<Context>, Context>,
     }
 
     /// Initialize with the L2 token address
@@ -48,29 +49,30 @@ pub contract pSymm {
     }
 
     #[utility]
-    pub(crate) unconstrained fn custody_balance(custody_id: AztecAddress) -> u128 {
-        storage.custody_balances.at(custody_id).balance_of()
+    unconstrained fn custody_balance(custody_id: Field) -> Field {
+        let balances = storage.custody_balances;
+
+        balance_utils::get_balance(balances.at(custody_id).set)
     }
 
     #[private]
-    fn address_to_custody(from: AztecAddress, custody_id: Field, amount: u128, nonce: Field) {
+    fn address_to_custody(from: AztecAddress, custody_id: Field, amount: u64, nonce: Field) {
         let cfg = storage.config.read();
         Token::at(cfg.token)
-            .transfer_in_private(from, context.this_address(), amount, nonce)
+            .transfer_in_private(from, context.this_address(), amount as u128, nonce)
             .call(&mut context);
 
-        let custody_id_addr = AztecAddress::from_field(custody_id);
-        storage.custody_balances.at(custody_id_addr).add(custody_id_addr, amount).emit(encode_and_encrypt_note(&mut context, custody_id_addr, from));
+        storage.custody_balances.at(custody_id).add(amount, context.this_address(), context.this_address());
     }
 
     #[private]
-    fn custody_to_address(to: AztecAddress, custody_id: Field, amount: u128, nonce: Field) {
+    fn custody_to_address(to: AztecAddress, custody_id: Field, amount: u64) {
         let custody_id_addr = AztecAddress::from_field(custody_id);
-        storage.custody_balances.at(custody_id_addr).sub(custody_id_addr, amount).emit(encode_and_encrypt_note(&mut context, custody_id_addr, to));
+        storage.custody_balances.at(custody_id).sub(amount, context.this_address(), context.this_address());
 
         let cfg = storage.config.read();
         Token::at(cfg.token)
-            .transfer_in_private(context.this_address(), to, amount, nonce)
+            .transfer_in_private(context.this_address(), to, amount as u128, 0)
             .call(&mut context);
 
     }

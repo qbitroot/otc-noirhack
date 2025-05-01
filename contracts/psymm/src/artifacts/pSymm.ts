@@ -145,11 +145,11 @@ custody_balances: {
     /** constructor(token: struct) */
     constructor: ((token: AztecAddressLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
-    /** custody_balance(custody_id: struct) */
-    custody_balance: ((custody_id: AztecAddressLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
+    /** custody_balance(custody_id: field) */
+    custody_balance: ((custody_id: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
-    /** custody_to_address(to: struct, custody_id: field, amount: integer, nonce: field) */
-    custody_to_address: ((to: AztecAddressLike, custody_id: FieldLike, amount: (bigint | number), nonce: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
+    /** custody_to_address(to: struct, custody_id: field, amount: integer) */
+    custody_to_address: ((to: AztecAddressLike, custody_id: FieldLike, amount: (bigint | number)) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
     /** get_config() */
     get_config: (() => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;

@@ -3,7 +3,8 @@ import { deriveKeys } from '@aztec/aztec.js';
 import { computePartialAddress } from '@aztec/stdlib/contract';
 import {
   EthAddress,
-  Fr,
+  Fr, GrumpkinScalar,
+  Point,
   L1TokenManager,
   L1TokenPortalManager,
   createLogger,
@@ -112,6 +113,8 @@ async function main() {
   
   // Register account before deployment
   await pxe.registerAccount(psymmSecretKey, await computePartialAddress(psymmInstance));
+  // await pxe.registerContract({ instance: psymmInstance, artifact: pSymmContract});
+  // await pxe.registerRec({ instance: psymmInstance, artifact: pSymmContract});
   
   // Now deploy
   const psymmContract = await psymmDeployment.send().deployed();
@@ -185,41 +188,51 @@ async function main() {
   const balance = await l2TokenContract.methods.balance_of_private(ownerAztecAddress).simulate();
   logger.info(`Private L2 balance of ${ownerAztecAddress} is ${balance}`);
 
-  // Deposit tokens to custody ID 0 privately
-  const depositAmount = BigInt(100);
-  const custodyId = 0n;
-  const depositNonce = Fr.random();
+  // Get contract config
+  const config = await psymmContract.methods.get_config().simulate();
+  logger.info(`pSymm config: token address = ${config.token}`);
+
+  // Transfer tokens to custody ID 0 privately
+  const transferAmount = BigInt(100);
+  // Convert custody ID to point on Grumpkin curve by multiplying with generator
+  // const custodyId = 0n;
+  const custodyId = 123n; //Fr.fromHexString(ownerAztecAddress.toString());
+  const transferNonce = Fr.random();
   
-  // Create private authwit for deposit
-  const authwitDeposit = await ownerWallet.createAuthWit(
+  // Create private authwit for transfer
+  const authwitTransfer = await ownerWallet.createAuthWit(
     {
       caller: psymmContract.address,
-      action: l2TokenContract.methods.transfer_in_private(ownerAztecAddress, psymmContract.address, depositAmount, depositNonce),
+      action: l2TokenContract.methods.transfer_in_private(ownerAztecAddress, psymmContract.address, transferAmount, transferNonce),
     },
   );
-  logger.info('Private authwit created for L2 deposit transfer');
+  logger.info('Private authwit created for L2 transfer');
   
-  // Perform deposit to custody ID 0 with authwit
+  // Transfer to custody ID with authwit
   await psymmContract.methods
-    .deposit(custodyId, depositAmount, depositNonce)
-    .send({ authWitnesses: [authwitDeposit] })
+    .address_to_custody(ownerAztecAddress, custodyId, transferAmount, transferNonce)
+    .send({ authWitnesses: [authwitTransfer] })
     .wait();
-  logger.info(`Deposited ${depositAmount} tokens to custody ID ${custodyId} privately`);
+  logger.info(`Transferred ${transferAmount} tokens to custody ID ${custodyId} privately`);
 
-  // Check custody balance after deposit
-  const custodyBalance = await psymmContract.methods.get_custody_balance(custodyId).simulate();
+  // Check custody balance after transfer
+  const custodyBalance = await psymmContract.methods.custody_balance(custodyId).simulate();
   logger.info(`Custody balance for ID ${custodyId} is ${custodyBalance}`);
 
-  // Withdraw tokens from custody ID 0
+  // Transfer tokens from custody ID 0 back to address
   const withdrawAmount = BigInt(50);
   await psymmContract.methods
-    .withdraw(custodyId, withdrawAmount)
+    .custody_to_address(ownerAztecAddress, custodyId, withdrawAmount)
     .send()
     .wait();
-  logger.info(`Withdrawn ${withdrawAmount} tokens from custody ID ${custodyId}`);
+  logger.info(`Transferred ${withdrawAmount} tokens from custody ID ${custodyId} to address`);
   
-  const newBalanceAfterWithdraw = await l2TokenContract.methods.balance_of_private(ownerAztecAddress).simulate();
-  logger.info(`New L2 balance of ${ownerAztecAddress} after withdraw is ${newBalanceAfterWithdraw}`);
+  // Check final balances
+  const finalCustodyBalance = await psymmContract.methods.custody_balance(custodyId).simulate();
+  logger.info(`Final custody balance for ID ${custodyId} is ${finalCustodyBalance}`);
+  
+  const finalAddressBalance = await l2TokenContract.methods.balance_of_private(ownerAztecAddress).simulate();
+  logger.info(`Final L2 balance of ${ownerAztecAddress} is ${finalAddressBalance}`);
 
   await l2TokenContract.methods.mint_to_public(ownerAztecAddress, 0n).send().wait();
   await l2TokenContract.methods.mint_to_public(ownerAztecAddress, 0n).send().wait();
