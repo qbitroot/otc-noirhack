@@ -96,13 +96,13 @@ async function main() {
     .send()
     .deployed();
   logger.info(`L2 token contract deployed at ${l2TokenContract.address}`);
-  // Generate private key for pSymm contract and register in PXE service
-  
-  // Create deployment with public keys but don't send yet
-  const psymmContract = await pSymmContract.deploy(
+
+  const psymmDeployment = await pSymmContract.deploy(
     ownerWallet,
     l2TokenContract.address
-  ).send().deployed();
+  );
+  const psymmContract = await psymmDeployment.send().deployed();
+  // pxe.registerSender(psymmContract.address);
 
   logger.info(`pSymm contract deployed at ${psymmContract.address}`);
   
@@ -189,7 +189,7 @@ async function main() {
   const authwitTransfer = await ownerWallet.createAuthWit(
     {
       caller: psymmContract.address,
-      action: l2TokenContract.methods.transfer_in_private(ownerAztecAddress, psymmContract.address, transferAmount, transferNonce),
+      action: l2TokenContract.methods.transfer_to_public(ownerAztecAddress, psymmContract.address, transferAmount, transferNonce),
     },
   );
   logger.info('Private authwit created for L2 transfer');

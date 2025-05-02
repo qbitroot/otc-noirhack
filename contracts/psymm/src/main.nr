@@ -31,6 +31,7 @@ pub contract pSymm {
     struct Storage<Context> {
         /// L2 token address for custody operations
         config: PublicImmutable<Config, Context>,
+        /// custody_id -> N*N of notes (N deposit notes with N owners)
         custody_balances: Map<Field, EasyPrivateUint<Context>, Context>,
     }
 
@@ -59,21 +60,21 @@ pub contract pSymm {
     fn address_to_custody(from: AztecAddress, custody_id: Field, amount: u64, nonce: Field) {
         let cfg = storage.config.read();
         Token::at(cfg.token)
-            .transfer_in_private(from, context.this_address(), amount as u128, nonce)
+            .transfer_to_public(from, context.this_address(), amount as u128, nonce)
             .call(&mut context);
 
-        storage.custody_balances.at(custody_id).add(amount, context.this_address(), context.this_address());
+        storage.custody_balances.at(custody_id).add(amount, context.msg_sender(), context.msg_sender());
     }
 
     #[private]
     fn custody_to_address(to: AztecAddress, custody_id: Field, amount: u64) {
         let custody_id_addr = AztecAddress::from_field(custody_id);
-        storage.custody_balances.at(custody_id).sub(amount, context.this_address(), context.this_address());
+        storage.custody_balances.at(custody_id).sub(amount, context.msg_sender(), context.msg_sender());
 
         let cfg = storage.config.read();
         Token::at(cfg.token)
-            .transfer_in_private(context.this_address(), to, amount as u128, 0)
-            .call(&mut context);
+            .transfer_in_public(context.this_address(), to, amount as u128, 0)
+            .enqueue(&mut context);
 
     }
 }
