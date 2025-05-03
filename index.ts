@@ -4,7 +4,7 @@ import { computePartialAddress } from '@aztec/stdlib/contract';
 import {
   EthAddress,
   Fr, GrumpkinScalar,
-  Point,
+  Point, AztecAddress,
   L1TokenManager,
   L1TokenPortalManager,
   createLogger,
@@ -83,13 +83,17 @@ async function main() {
   const pxe = await setupSandbox();
   const wallets = await getInitialTestAccountsWallets(pxe);
   const ownerWallet = wallets[0];
+  const secondWallet = wallets[1];
   const ownerAztecAddress = wallets[0].getAddress();
+  const secondAztecAddress = wallets[1].getAddress();
   const l1ContractAddresses = (await pxe.getNodeInfo()).l1ContractAddresses;
   logger.info('L1 Contract Addresses:');
   logger.info(`Registry Address: ${l1ContractAddresses.registryAddress}`);
   logger.info(`Inbox Address: ${l1ContractAddresses.inboxAddress}`);
   logger.info(`Outbox Address: ${l1ContractAddresses.outboxAddress}`);
   logger.info(`Rollup Address: ${l1ContractAddresses.rollupAddress}`);
+  logger.info(`Address 1: ${ownerAztecAddress}`);
+  logger.info(`Address 2: ${secondAztecAddress}`);
 
   // Deploy L2 token contract
   const l2TokenContract = await TokenContract.deploy(ownerWallet, ownerAztecAddress, 'L2 Token', 'L2', 18)
@@ -180,10 +184,9 @@ async function main() {
 
   // Transfer tokens to custody ID 0 privately
   const transferAmount = BigInt(100);
-  // Convert custody ID to point on Grumpkin curve by multiplying with generator
-  // const custodyId = 0n;
-  const custodyId = 123n; //Fr.fromHexString(ownerAztecAddress.toString());
+  const custodyId = 123n;
   const transferNonce = Fr.random();
+  const counterparties = [secondAztecAddress, AztecAddress.ZERO, AztecAddress.ZERO, AztecAddress.ZERO];
   
   // Create private authwit for transfer
   const authwitTransfer = await ownerWallet.createAuthWit(
@@ -196,29 +199,30 @@ async function main() {
   
   // Transfer to custody ID with authwit
   await psymmContract.methods
-    .address_to_custody(ownerAztecAddress, custodyId, transferAmount, transferNonce)
+    .address_to_custody(ownerAztecAddress, counterparties, custodyId, transferAmount, transferNonce)
     .send({ authWitnesses: [authwitTransfer] })
     .wait();
   logger.info(`Transferred ${transferAmount} tokens to custody ID ${custodyId} privately`);
 
-  // Check custody balance after transfer
-  const custodyBalance = await psymmContract.methods.custody_balance(custodyId).simulate();
-  logger.info(`Custody balance for ID ${custodyId} is ${custodyBalance}`);
+  // Check custody balance after transfer from owner's perspective
+  const custodyBalance = await psymmContract.methods.custody_balance(custodyId, ownerAztecAddress).simulate();
+  logger.info(`Custody balance for ID ${custodyId} from owner's view is ${custodyBalance}`);
+  const custodyBalance2 = await psymmContract.methods.custody_balance(custodyId, secondAztecAddress).simulate();
+  logger.info(`Custody balance for ID ${custodyId} from second user's view is ${custodyBalance2}`);
 
   // Transfer tokens from custody ID 0 back to address
   const withdrawAmount = BigInt(50);
   await psymmContract.methods
-    .custody_to_address(ownerAztecAddress, custodyId, withdrawAmount)
+    .custody_to_address(ownerAztecAddress, counterparties, custodyId, withdrawAmount)
     .send()
     .wait();
   logger.info(`Transferred ${withdrawAmount} tokens from custody ID ${custodyId} to address`);
   
   // Check final balances
-  const finalCustodyBalance = await psymmContract.methods.custody_balance(custodyId).simulate();
-  logger.info(`Final custody balance for ID ${custodyId} is ${finalCustodyBalance}`);
-  
-  const finalAddressBalance = await l2TokenContract.methods.balance_of_private(ownerAztecAddress).simulate();
-  logger.info(`Final L2 balance of ${ownerAztecAddress} is ${finalAddressBalance}`);
+  const finalCustodyBalance = await psymmContract.methods.custody_balance(custodyId, ownerAztecAddress).simulate();
+  logger.info(`Custody balance for ID ${custodyId} from owner's view is ${finalCustodyBalance}`);
+  const finalCustodyBalance2 = await psymmContract.methods.custody_balance(custodyId, secondAztecAddress).simulate();
+  logger.info(`Custody balance for ID ${custodyId} from second user's view is ${finalCustodyBalance2}`);
 
   await l2TokenContract.methods.mint_to_public(ownerAztecAddress, 0n).send().wait();
   await l2TokenContract.methods.mint_to_public(ownerAztecAddress, 0n).send().wait();
