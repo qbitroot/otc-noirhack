@@ -1,4 +1,5 @@
 mod config;
+mod custody;
 
 use dep::aztec::macros::aztec;
 
@@ -22,19 +23,18 @@ pub contract pSymm {
 
     use dep::token::Token;
     use dep::types::traits::FromField;
-    use dep::easy_private_state::EasyPrivateUint;
-    use dep::value_note::value_note::ValueNote;
 
     use crate::config::Config;
+    use crate::custody::{Custody, DepositNote};
 
-    global MAX_COUNTERPARTIES: u32 = 4;
+    global MAX_COUNTERPARTIES: u32 = 3;
 
     #[storage]
     struct Storage<Context> {
         /// L2 token address for custody operations
         config: PublicImmutable<Config, Context>,
         /// custody_id -> N*N of notes (N deposit notes with N owners)
-        custody_balances: Map<Field, EasyPrivateUint<Context>, Context>,
+        custody_map: Map<Field, Custody<Context>, Context>,
     }
 
     /// Initialize with the L2 token address
@@ -52,22 +52,20 @@ pub contract pSymm {
     }
 
     #[utility]
-    unconstrained fn custody_balance(custody_id: Field, sender: AztecAddress) -> Field {
-        // sender is only used so that PXEs with multiple addresses registered
-        // do not reread same notes multiple times
-        let balances = storage.custody_balances;
+    unconstrained fn custody_balance(custody_id: Field, deposit_owner: AztecAddress) -> Field {
+        let balances = storage.custody_map;
 
         let set = balances.at(custody_id).set;
 
-        get_balance_with_offset(set, 0, sender)
+        get_balance_with_offset(set, 0, deposit_owner)
     }
 
     #[utility]
     #[internal]
     pub unconstrained fn get_balance_with_offset(
-        set: PrivateSet<ValueNote, UtilityContext>,
+        set: PrivateSet<DepositNote, UtilityContext>,
         offset: u32,
-        addr: AztecAddress
+        deposit_owner: AztecAddress
     ) -> Field {
         let mut balance = 0;
         let mut options = NoteViewerOptions::new();
@@ -75,14 +73,15 @@ pub contract pSymm {
         for i in 0..options.limit {
             if i < notes.len() {
                 let note = notes.get_unchecked(i);
-                if note.owner.eq(addr) {
-                    balance += note.value();
+                // doublecheck to prevent duplicate read on multi-account PXE in same custody
+                if note.deposit_owner.eq(deposit_owner) & note.owner.eq(deposit_owner) {
+                    balance += note.deposit_amount();
                 }
             }
         }
 
         if (notes.len() == options.limit) {
-            balance += get_balance_with_offset(set, offset + options.limit, addr);
+            balance += get_balance_with_offset(set, offset + options.limit, deposit_owner);
         }
 
         balance
@@ -97,15 +96,16 @@ pub contract pSymm {
         custody_id: Field,
         amount: u64, nonce: Field
     ) {
+        // assert from is sender
         let cfg = storage.config.read();
         Token::at(cfg.token)
             .transfer_to_public(from, context.this_address(), amount as u128, nonce)
             .call(&mut context);
 
-        storage.custody_balances.at(custody_id).add(amount, context.msg_sender(), context.msg_sender());
+        storage.custody_map.at(custody_id).add(amount, from, from);
         for i in 0..MAX_COUNTERPARTIES {
             if !counterparties[i].eq(AztecAddress::from_field(0)) {
-                storage.custody_balances.at(custody_id).add(amount, counterparties[i], counterparties[i]);
+                storage.custody_map.at(custody_id).add(amount, from, counterparties[i]);
             }
         }
     }
@@ -115,10 +115,10 @@ pub contract pSymm {
         to: AztecAddress, counterparties: [AztecAddress; MAX_COUNTERPARTIES],
         custody_id: Field, amount: u64
     ) {
-        storage.custody_balances.at(custody_id).sub(amount, context.msg_sender(), context.msg_sender());
+        storage.custody_map.at(custody_id).sub(amount, to, to);
         for i in 0..MAX_COUNTERPARTIES {
             if !counterparties[i].eq(AztecAddress::from_field(0)) {
-                storage.custody_balances.at(custody_id).sub(amount, counterparties[i], counterparties[i]);
+                storage.custody_map.at(custody_id).sub(amount, to, counterparties[i]);
             }
         }
 
