@@ -17,11 +17,15 @@ pub contract pSymm {
 
     use dep::token::Token;
     use dep::types::traits::FromField;
+    use binary_merkle_root::binary_merkle_root;
+
+    // use std::hash::poseidon2::Poseidon2::hash;
 
     use crate::config::Config;
     use crate::custody::{Custody, DepositNote};
 
     global MAX_COUNTERPARTIES: u32 = 3;
+    global MAX_PPM_DEPTH: u32 = 2;
 
     #[storage]
     struct Storage<Context> {
@@ -45,40 +49,14 @@ pub contract pSymm {
         storage.config.read()
     }
 
-    #[utility]
-    unconstrained fn custody_balance(custody_id: Field, deposit_owner: AztecAddress) -> Field {
-        let balances = storage.custody_map;
-
-        let set = balances.at(custody_id).set;
-
-        get_balance_with_offset(set, 0, deposit_owner)
+    #[private]
+    fn custody_balance(custody_id: Field) -> Field {
+        storage.custody_map.at(custody_id).get_balance(context.msg_sender())
     }
 
-    #[utility]
-    #[internal]
-    pub unconstrained fn get_balance_with_offset(
-        set: PrivateSet<DepositNote, UtilityContext>,
-        offset: u32,
-        deposit_owner: AztecAddress
-    ) -> Field {
-        let mut balance = 0;
-        let mut options = NoteViewerOptions::new();
-        let notes = set.view_notes(options.set_offset(offset));
-        for i in 0..options.limit {
-            if i < notes.len() {
-                let note = notes.get_unchecked(i);
-                // doublecheck to prevent duplicate read on multi-account PXE in same custody
-                if note.deposit_owner().eq(deposit_owner) & note.owner().eq(deposit_owner) {
-                    balance += note.deposit_amount();
-                }
-            }
-        }
-
-        if (notes.len() == options.limit) {
-            balance += get_balance_with_offset(set, offset + options.limit, deposit_owner);
-        }
-
-        balance
+    #[private]
+    fn custody_balance_from(custody_id: Field, deposit_owner: AztecAddress) -> Field {
+        storage.custody_map.at(custody_id).get_balance_from(context.msg_sender(), deposit_owner)
     }
 
 
@@ -96,10 +74,10 @@ pub contract pSymm {
             .transfer_to_public(from, context.this_address(), amount as u128, nonce)
             .call(&mut context);
 
-        storage.custody_map.at(custody_id).add(amount, from, from);
+        storage.custody_map.at(custody_id).add_deposit(amount, from, from);
         for i in 0..MAX_COUNTERPARTIES {
             if !counterparties[i].eq(AztecAddress::from_field(0)) {
-                storage.custody_map.at(custody_id).add(amount, from, counterparties[i]);
+                storage.custody_map.at(custody_id).add_deposit(amount, from, counterparties[i]);
             }
         }
     }
@@ -107,12 +85,14 @@ pub contract pSymm {
     #[private]
     fn custody_to_address(
         to: AztecAddress, counterparties: [AztecAddress; MAX_COUNTERPARTIES],
-        custody_id: Field, amount: u64
+        custody_id: Field, amount: u64,
+        // merkle_siblings: [Field; MAX_PPM_DEPTH],
+        // merkle_indices: [Field; MAX_PPM_DEPTH]
     ) {
-        storage.custody_map.at(custody_id).sub(amount, to, to);
+        storage.custody_map.at(custody_id).add_withdrawal(amount, to, to);
         for i in 0..MAX_COUNTERPARTIES {
             if !counterparties[i].eq(AztecAddress::from_field(0)) {
-                storage.custody_map.at(custody_id).sub(amount, to, counterparties[i]);
+                storage.custody_map.at(custody_id).add_withdrawal(amount, to, counterparties[i]);
             }
         }
 

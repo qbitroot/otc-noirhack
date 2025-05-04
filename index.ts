@@ -224,6 +224,13 @@ async function main() {
   const finalCustodyBalance2 = await psymmContract.withWallet(secondWallet).methods.custody_balance(custodyId, ownerAztecAddress).simulate();
   logger.info(`Custody balance for ID ${custodyId} from second user's view is ${finalCustodyBalance2}`);
 
+  // Check balances from second wallet's perspective for both addresses
+  const ownerBalanceFromSecond = await psymmContract.withWallet(secondWallet).methods.custody_balance_from(custodyId, ownerAztecAddress).simulate();
+  logger.info(`Owner's custody balance for ID ${custodyId} viewed from second wallet: ${ownerBalanceFromSecond}`);
+  
+  const secondBalanceFromSecond = await psymmContract.withWallet(secondWallet).methods.custody_balance_from(custodyId, secondAztecAddress).simulate();
+  logger.info(`Second wallet's custody balance for ID ${custodyId} viewed from second wallet: ${secondBalanceFromSecond}`);
+
   await l2TokenContract.methods.mint_to_public(ownerAztecAddress, 0n).send().wait();
   await l2TokenContract.methods.mint_to_public(ownerAztecAddress, 0n).send().wait();
   logger.info('Sent 2 dummy txs to advance L1->L2 message processing');

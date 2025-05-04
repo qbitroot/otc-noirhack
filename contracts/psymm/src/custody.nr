@@ -23,12 +23,12 @@ pub struct DepositNote {
     deposit_owner: AztecAddress,
     deposit_amount: Field,
     owner: AztecAddress, // for decryption
+    is_deposit: bool,    // true for deposits, false for withdrawals
     randomness: Field,
 }
-// docs:end:value-note-def
 
 impl DepositNote {
-    pub fn new(deposit_owner: AztecAddress, deposit_amount: Field, owner: AztecAddress) -> Self {
+    pub fn new(deposit_owner: AztecAddress, deposit_amount: Field, owner: AztecAddress, is_deposit: bool) -> Self {
         // Safety: We use the randomness to preserve the privacy of the note recipient by preventing brute-forcing,
         // so a malicious sender could use non-random values to make the note less private. But they already know
         // the full note pre-image anyway, and so the recipient already trusts them to not disclose this
@@ -36,7 +36,7 @@ impl DepositNote {
 
         let randomness = unsafe { random() };
 
-        DepositNote { deposit_owner, deposit_amount, owner, randomness }
+        DepositNote { deposit_owner, deposit_amount, owner, is_deposit, randomness }
     }
 
     pub fn deposit_owner(self) -> AztecAddress {
@@ -47,6 +47,9 @@ impl DepositNote {
     }
     pub fn deposit_amount(self) -> Field {
         self.deposit_amount
+    }
+    pub fn is_deposit(self) -> bool {
+        self.is_deposit
     }
 }
 
@@ -69,24 +72,21 @@ impl<Context> Custody<Context> {
     }
 }
 
-pub struct FilterArgs {
-    deposit_owner: AztecAddress,
-    min_sum: Field,
+pub struct BalanceArgs {
+    from: AztecAddress,
 }
 
-pub fn filter_notes_min_sum(
+pub fn filter_notes_by_owner(
     notes: [Option<RetrievedNote<DepositNote>>; MAX_NOTE_HASH_READ_REQUESTS_PER_CALL],
-    args: FilterArgs,
+    args: BalanceArgs,
 ) -> [Option<RetrievedNote<DepositNote>>; MAX_NOTE_HASH_READ_REQUESTS_PER_CALL] {
     let mut selected = [Option::none(); MAX_NOTE_HASH_READ_REQUESTS_PER_CALL];
 
-    let mut sum = 0;
     for i in 0..notes.len() {
-        if notes[i].is_some() & full_field_less_than(sum, args.min_sum) {
+        if notes[i].is_some() {
             let retrieved_note = notes[i].unwrap_unchecked();
-            selected[i] = Option::some(retrieved_note);
-            if retrieved_note.note.deposit_owner.eq(args.deposit_owner) {
-                sum += retrieved_note.note.deposit_amount();
+            if retrieved_note.note.owner().eq(args.from) {
+                selected[i] = Option::some(retrieved_note);
             }
         }
     }
@@ -94,37 +94,55 @@ pub fn filter_notes_min_sum(
     selected
 }
 
-
 impl Custody<&mut PrivateContext> {
-    // Very similar to `value_note::utils::increment`.
-    pub fn add(self, addend: u64, deposit_owner: AztecAddress, owner: AztecAddress) {
-        let addend_note = DepositNote::new(deposit_owner, addend as Field, owner);
-
-        self.set.insert(addend_note).emit(encode_and_encrypt_note(self.context, owner, owner));
+    pub fn add_deposit(self, amount: u64, deposit_owner: AztecAddress, owner: AztecAddress) {
+        let note = DepositNote::new(deposit_owner, amount as Field, owner, true);
+        self.set.insert(note).emit(encode_and_encrypt_note(self.context, owner, owner));
     }
 
-    // Very similar to `value_note::utils::decrement`.
-    pub fn sub(self, subtrahend: u64, deposit_owner: AztecAddress, owner: AztecAddress) {
-        let filter_args = FilterArgs {
-            deposit_owner,
-            min_sum: subtrahend as Field,
-        };
-        let options = NoteGetterOptions::with_filter(filter_notes_min_sum, filter_args);
-        let notes = self.set.pop_notes(options);
-        let mut minuend: u64 = 0;
+    pub fn add_withdrawal(self, amount: u64, deposit_owner: AztecAddress, owner: AztecAddress) {
+        let note = DepositNote::new(deposit_owner, amount as Field, owner, false);
+        self.set.insert(note).emit(encode_and_encrypt_note(self.context, owner, owner));
+    }
+
+    pub fn get_balance(self, from: AztecAddress) -> Field {
+        let mut balance = 0;
+        let mut options = NoteGetterOptions::with_filter(filter_notes_by_owner, BalanceArgs { from });
+        let notes = self.set.get_notes(options);
+        
         for i in 0..options.limit {
             if i < notes.len() {
-                let note = notes.get_unchecked(i);
-
-                minuend += note.deposit_amount() as u64;
+                let note = notes.get_unchecked(i).note;
+                if note.is_deposit() {
+                    balance += note.deposit_amount();
+                } else {
+                    balance -= note.deposit_amount();
+                }
             }
         }
+        
+        balance
+    }
 
-        assert(minuend >= subtrahend);
-
-        let result_value = minuend - subtrahend;
-        let result_note = DepositNote::new(deposit_owner, result_value as Field, owner);
-        self.set.insert(result_note).emit(encode_and_encrypt_note(self.context, owner, owner));
+    pub fn get_balance_from(self, from: AztecAddress, deposit_owner: AztecAddress) -> Field {
+        let mut balance = 0;
+        let mut options = NoteGetterOptions::with_filter(filter_notes_by_owner, BalanceArgs { from });
+        let notes = self.set.get_notes(options);
+        
+        for i in 0..options.limit {
+            if i < notes.len() {
+                let note = notes.get_unchecked(i).note;
+                if note.deposit_owner().eq(deposit_owner) {
+                    if note.is_deposit() {
+                        balance += note.deposit_amount();
+                    } else {
+                        balance -= note.deposit_amount();
+                    }
+                }
+            }
+        }
+        
+        balance
     }
 }
 

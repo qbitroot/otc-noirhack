@@ -11,6 +11,8 @@
     "@aztec/l1-artifacts": "^0.85.0",
     "@aztec/noir-contracts.js": "^0.85.0",
     "@types/node": "^22.14.1",
+    "@zk-kit/lean-imt": "^2.2.3",
+    "@zkpassport/poseidon2": "^0.6.1",
     "tsx": "^4.19.3",
     "typescript": "^5.0.4",
     "viem": "^2.22.8"
