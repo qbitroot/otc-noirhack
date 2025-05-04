@@ -115,27 +115,30 @@ export class pSymmContract extends ContractBase {
   }
   
 
-  public static get storage(): ContractStorageLayout<'config' | 'custody_balances'> {
+  public static get storage(): ContractStorageLayout<'config' | 'custody_map'> {
       return {
         config: {
       slot: new Fr(1n),
     },
-custody_balances: {
+custody_map: {
       slot: new Fr(3n),
     }
-      } as ContractStorageLayout<'config' | 'custody_balances'>;
+      } as ContractStorageLayout<'config' | 'custody_map'>;
     }
     
 
-  public static get notes(): ContractNotes<'UintNote' | 'ValueNote'> {
+  public static get notes(): ContractNotes<'UintNote' | 'ValueNote' | 'DepositNote'> {
     return {
       UintNote: {
           id: new NoteSelector(1),
         },
 ValueNote: {
           id: new NoteSelector(0),
+        },
+DepositNote: {
+          id: new NoteSelector(2),
         }
-    } as ContractNotes<'UintNote' | 'ValueNote'>;
+    } as ContractNotes<'UintNote' | 'ValueNote' | 'DepositNote'>;
   }
   
 
@@ -148,8 +151,8 @@ ValueNote: {
     /** constructor(token: struct) */
     constructor: ((token: AztecAddressLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
-    /** custody_balance(custody_id: field, sender: struct) */
-    custody_balance: ((custody_id: FieldLike, sender: AztecAddressLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
+    /** custody_balance(custody_id: field, deposit_owner: struct) */
+    custody_balance: ((custody_id: FieldLike, deposit_owner: AztecAddressLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
     /** custody_to_address(to: struct, counterparties: array, custody_id: field, amount: integer) */
     custody_to_address: ((to: AztecAddressLike, counterparties: AztecAddressLike[], custody_id: FieldLike, amount: (bigint | number)) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;

@@ -207,7 +207,7 @@ async function main() {
   // Check custody balance after transfer from owner's perspective
   const custodyBalance = await psymmContract.methods.custody_balance(custodyId, ownerAztecAddress).simulate();
   logger.info(`Custody balance for ID ${custodyId} from owner's view is ${custodyBalance}`);
-  const custodyBalance2 = await psymmContract.methods.custody_balance(custodyId, secondAztecAddress).simulate();
+  const custodyBalance2 = await psymmContract.withWallet(secondWallet).methods.custody_balance(custodyId, ownerAztecAddress).simulate();
   logger.info(`Custody balance for ID ${custodyId} from second user's view is ${custodyBalance2}`);
 
   // Transfer tokens from custody ID 0 back to address
@@ -221,7 +221,7 @@ async function main() {
   // Check final balances
   const finalCustodyBalance = await psymmContract.methods.custody_balance(custodyId, ownerAztecAddress).simulate();
   logger.info(`Custody balance for ID ${custodyId} from owner's view is ${finalCustodyBalance}`);
-  const finalCustodyBalance2 = await psymmContract.methods.custody_balance(custodyId, secondAztecAddress).simulate();
+  const finalCustodyBalance2 = await psymmContract.withWallet(secondWallet).methods.custody_balance(custodyId, ownerAztecAddress).simulate();
   logger.info(`Custody balance for ID ${custodyId} from second user's view is ${finalCustodyBalance2}`);
 
   await l2TokenContract.methods.mint_to_public(ownerAztecAddress, 0n).send().wait();
