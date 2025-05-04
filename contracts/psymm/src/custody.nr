@@ -22,9 +22,9 @@ use dep::aztec::{
 pub struct DepositNote {
     deposit_owner: AztecAddress,
     deposit_amount: Field,
-    owner: AztecAddress, // for decryption
+    owner: AztecAddress, // view-only for decryption
     is_deposit: bool,    // true for deposits, false for withdrawals
-    randomness: Field,
+    randomness: Field,   // prevent brute-forcing note
 }
 
 impl DepositNote {
