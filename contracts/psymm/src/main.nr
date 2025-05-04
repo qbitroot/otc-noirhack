@@ -6,19 +6,13 @@ use dep::aztec::macros::aztec;
 #[aztec]
 pub contract pSymm {
     use dep::aztec::{
-        context::{PrivateContext, UtilityContext},
+        context::UtilityContext,
         macros::{
             functions::{initializer, private, public, view, utility, internal},
             storage::storage,
         },
-        messages::logs::{
-            event::encode_and_encrypt_event_unconstrained,
-            note::{encode_and_encrypt_note, encode_and_encrypt_note_unconstrained},
-        },
         prelude::{AztecAddress, Map, PrivateSet, PublicImmutable},
-        note::note_interface::{NoteHash, NoteProperties},
         note::note_viewer_options::NoteViewerOptions,
-        utils::comparison::Comparator,
     };
 
     use dep::token::Token;
@@ -74,7 +68,7 @@ pub contract pSymm {
             if i < notes.len() {
                 let note = notes.get_unchecked(i);
                 // doublecheck to prevent duplicate read on multi-account PXE in same custody
-                if note.deposit_owner.eq(deposit_owner) & note.owner.eq(deposit_owner) {
+                if note.deposit_owner().eq(deposit_owner) & note.owner().eq(deposit_owner) {
                     balance += note.deposit_amount();
                 }
             }

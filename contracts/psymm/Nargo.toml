@@ -10,3 +10,5 @@ value_note = { git="https://github.com/AztecProtocol/aztec-packages/", tag="v0.8
 token_portal_content_hash_lib = { git="https://github.com/AztecProtocol/aztec-packages/", tag="v0.85.0", directory="noir-projects/noir-contracts/contracts/libs/token_portal_content_hash_lib"}
 token = { git="https://github.com/AztecProtocol/aztec-packages/", tag="v0.85.0", directory="noir-projects/noir-contracts/contracts/app/token_contract"}
 types = { git="https://github.com/AztecProtocol/aztec-packages/", tag="v0.85.0", directory="noir-projects/noir-protocol-circuits/crates/types"}
+trees = { git = "https://github.com/privacy-scaling-explorations/zk-kit.noir", tag = "merkle-trees-v0.0.1", directory = "packages/merkle-trees" }
+
