@@ -17,15 +17,12 @@ pub contract pSymm {
 
     use dep::token::Token;
     use dep::types::traits::FromField;
-    use binary_merkle_root::binary_merkle_root;
-
-    // use std::hash::poseidon2::Poseidon2::hash;
+    use dep::authwit::auth::assert_inner_hash_valid_authwit;
 
     use crate::config::Config;
     use crate::custody::{Custody, DepositNote};
 
-    global MAX_COUNTERPARTIES: u32 = 3;
-    global MAX_PPM_DEPTH: u32 = 2;
+    global MAX_COUNTERPARTIES: u32 = 1;
 
     #[storage]
     struct Storage<Context> {
@@ -68,6 +65,7 @@ pub contract pSymm {
         custody_id: Field,
         amount: u64, nonce: Field
     ) {
+        assert(from.eq(context.msg_sender()));
         // assert from is sender
         let cfg = storage.config.read();
         Token::at(cfg.token)
@@ -85,14 +83,20 @@ pub contract pSymm {
     #[private]
     fn custody_to_address(
         to: AztecAddress, counterparties: [AztecAddress; MAX_COUNTERPARTIES],
-        custody_id: Field, amount: u64,
-        // merkle_siblings: [Field; MAX_PPM_DEPTH],
-        // merkle_indices: [Field; MAX_PPM_DEPTH]
+        custody_id: Field, amount: u64, nonce: Field
     ) {
         storage.custody_map.at(custody_id).add_withdrawal(amount, to, to);
         for i in 0..MAX_COUNTERPARTIES {
             if !counterparties[i].eq(AztecAddress::from_field(0)) {
                 storage.custody_map.at(custody_id).add_withdrawal(amount, to, counterparties[i]);
+            }
+        }
+
+        assert_inner_hash_valid_authwit(&mut context, to, 0);
+
+        for i in 0..MAX_COUNTERPARTIES {
+            if !counterparties[i].eq(AztecAddress::from_field(0)) {
+                assert_inner_hash_valid_authwit(&mut context, counterparties[i], 0);
             }
         }
 
