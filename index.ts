@@ -34,7 +34,7 @@ const { ETHEREUM_HOSTS = 'http://localhost:8545' } = process.env;
 const { walletClient, publicClient } = createL1Clients(ETHEREUM_HOSTS.split(','), MNEMONIC);
 const ownerEthAddress = walletClient.account.address;
 
-const MINT_AMOUNT = BigInt(1e12);
+const MINT_AMOUNT = BigInt(1e4);
 
 const setupSandbox = async () => {
   const { PXE_URL = 'http://localhost:8080' } = process.env;
@@ -218,7 +218,7 @@ async function main() {
 
   // Transfer tokens from custody ID 0 back to address
   const withdrawAmount = BigInt(50);
-  const withdrawNonce = 8888n;
+  const withdrawNonce = Fr.random();
 
   // Get approval from counterparty first
   await psymmContract.withWallet(secondWallet).methods
@@ -253,7 +253,7 @@ async function main() {
 
 
   // Setup withdrawal to L1
-  const l1WithdrawAmount = 9n;
+  const l1WithdrawAmount = 50n;
   const nonce = Fr.random();
 
   // Create private authwit for withdrawal

@@ -109,6 +109,11 @@ pub contract pSymm {
         amount: u64,
         nonce: Field
     ) {
+        // Check total custody balance is positive before withdrawal
+        let receiver = parties[receiver_idx];
+        let total_balance = storage.custody_map.at(custody_id).get_balance(receiver);
+        assert(total_balance as u128 > 0);
+
         let mut fields = [0; MAX_PARTIES];
         for i in 0..MAX_PARTIES {
             fields[i] = parties[i].to_field();
