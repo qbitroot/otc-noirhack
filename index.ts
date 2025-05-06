@@ -185,9 +185,14 @@ async function main() {
 
   // Transfer tokens to custody ID 0 privately
   const transferAmount = BigInt(100);
-  const custodyId = 123n;
+  // Import poseidon2Hash dynamically
+  const { poseidon2Hash } = await import("@zkpassport/poseidon2");
+
+  // Generate custody ID from parties using poseidon hash
+  const parties = [ownerAztecAddress, secondAztecAddress];
+  const partyFields = parties.map(addr => BigInt(addr.toString()));
+  const custodyId = poseidon2Hash(partyFields);
   const transferNonce = Fr.random();
-  const counterparties = [secondAztecAddress, AztecAddress.ZERO, AztecAddress.ZERO, AztecAddress.ZERO];
   
   // Create private authwit for transfer
   const authwitTransfer = await ownerWallet.createAuthWit(
@@ -200,7 +205,7 @@ async function main() {
   
   // Transfer to custody ID with authwit
   await psymmContract.methods
-    .address_to_custody(ownerAztecAddress, counterparties, custodyId, transferAmount, transferNonce)
+    .address_to_custody(custodyId, parties, 0, transferAmount, transferNonce)
     .send({ authWitnesses: [authwitTransfer] })
     .wait();
   logger.info(`Transferred ${transferAmount} tokens to custody ID ${custodyId} privately`);
@@ -224,7 +229,7 @@ async function main() {
 
   // Now execute the withdrawal with approval
   await psymmContract.withWallet(ownerWallet).methods
-    .custody_to_address(ownerAztecAddress, counterparties, custodyId, withdrawAmount, withdrawNonce)
+    .custody_to_address(custodyId, parties, 0, withdrawAmount, withdrawNonce)
     .send()
     .wait();
   logger.info(`Transferred ${withdrawAmount} tokens from custody ID ${custodyId} to address`);

@@ -61,6 +61,7 @@ pub contract pSymm {
 
     #[private]
     fn address_to_custody(
+        custody_id: Field,
         parties: [AztecAddress; MAX_PARTIES],
         sender_idx: u32,
         amount: u64, 
@@ -70,7 +71,9 @@ pub contract pSymm {
         for i in 0..MAX_PARTIES {
             fields[i] = parties[i].to_field();
         }
-        let custody_id = hash(fields, MAX_PARTIES);
+        let computed_id = hash(fields, MAX_PARTIES);
+        assert(custody_id == computed_id);
+
         assert(parties[sender_idx].eq(context.msg_sender()));
         let cfg = storage.config.read();
         Token::at(cfg.token)
@@ -100,6 +103,7 @@ pub contract pSymm {
 
     #[private]
     fn custody_to_address(
+        custody_id: Field,
         parties: [AztecAddress; MAX_PARTIES],
         receiver_idx: u32,
         amount: u64,
@@ -109,7 +113,8 @@ pub contract pSymm {
         for i in 0..MAX_PARTIES {
             fields[i] = parties[i].to_field();
         }
-        let custody_id = hash(fields, MAX_PARTIES);
+        let computed_id = hash(fields, MAX_PARTIES);
+        assert(custody_id == computed_id);
         let receiver = parties[receiver_idx];
         storage.custody_map.at(custody_id).add_withdrawal(amount, receiver, receiver);
         
