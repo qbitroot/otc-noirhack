@@ -213,8 +213,18 @@ async function main() {
 
   // Transfer tokens from custody ID 0 back to address
   const withdrawAmount = BigInt(50);
+  const withdrawNonce = 8888n;
+
+  // Get approval from counterparty first
+  await psymmContract.withWallet(secondWallet).methods
+    .approve_withdrawal(ownerAztecAddress, custodyId, withdrawAmount, withdrawNonce)
+    .send()
+    .wait();
+  logger.info(`Counterparty approved withdrawal of ${withdrawAmount} tokens`);
+
+  // Now execute the withdrawal with approval
   await psymmContract.withWallet(ownerWallet).methods
-    .custody_to_address(ownerAztecAddress, counterparties, custodyId, withdrawAmount, 0)
+    .custody_to_address(ownerAztecAddress, counterparties, custodyId, withdrawAmount, withdrawNonce)
     .send()
     .wait();
   logger.info(`Transferred ${withdrawAmount} tokens from custody ID ${custodyId} to address`);
