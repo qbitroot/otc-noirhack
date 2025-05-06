@@ -13,16 +13,17 @@ pub contract pSymm {
         },
         prelude::{AztecAddress, Map, PrivateSet, PublicImmutable},
         note::note_viewer_options::NoteViewerOptions,
+        protocol_types::traits::{FromField, ToField}
     };
 
     use dep::token::Token;
-    use dep::types::traits::FromField;
-    use dep::authwit::auth::assert_inner_hash_valid_authwit;
 
     use crate::config::Config;
     use crate::custody::{Custody, DepositNote};
 
-    global MAX_COUNTERPARTIES: u32 = 1;
+    use std::hash::poseidon2::Poseidon2::hash;
+
+    global MAX_PARTIES: u32 = 2;
 
     #[storage]
     struct Storage<Context> {
@@ -38,6 +39,7 @@ pub contract pSymm {
     fn constructor(token: AztecAddress) {
         storage.config.initialize(Config { token });
     }
+
 
     /// Read-only view of the contract config
     #[private]
@@ -59,24 +61,24 @@ pub contract pSymm {
 
     #[private]
     fn address_to_custody(
-        from: AztecAddress,
-        // counterparties used to share note ownership
-        counterparties: [AztecAddress; MAX_COUNTERPARTIES],
-        custody_id: Field,
-        amount: u64, nonce: Field
+        parties: [AztecAddress; MAX_PARTIES],
+        sender_idx: u32,
+        amount: u64, 
+        nonce: Field
     ) {
-        assert(from.eq(context.msg_sender()));
-        // assert from is sender
+        let mut fields = [0; MAX_PARTIES];
+        for i in 0..MAX_PARTIES {
+            fields[i] = parties[i].to_field();
+        }
+        let custody_id = hash(fields, MAX_PARTIES);
+        assert(parties[sender_idx].eq(context.msg_sender()));
         let cfg = storage.config.read();
         Token::at(cfg.token)
-            .transfer_to_public(from, context.this_address(), amount as u128, nonce)
+            .transfer_to_public(parties[sender_idx], context.this_address(), amount as u128, nonce)
             .call(&mut context);
 
-        storage.custody_map.at(custody_id).add_deposit(amount, from, from);
-        for i in 0..MAX_COUNTERPARTIES {
-            if !counterparties[i].eq(AztecAddress::from_field(0)) {
-                storage.custody_map.at(custody_id).add_deposit(amount, from, counterparties[i]);
-            }
+        for i in 0..MAX_PARTIES {
+            storage.custody_map.at(custody_id).add_deposit(amount, parties[sender_idx], parties[i]);
         }
     }
 
@@ -98,32 +100,37 @@ pub contract pSymm {
 
     #[private]
     fn custody_to_address(
-        to: AztecAddress,
-        counterparties: [AztecAddress; MAX_COUNTERPARTIES],
-        custody_id: Field,
+        parties: [AztecAddress; MAX_PARTIES],
+        receiver_idx: u32,
         amount: u64,
         nonce: Field
     ) {
-        storage.custody_map.at(custody_id).add_withdrawal(amount, to, to);
+        let mut fields = [0; MAX_PARTIES];
+        for i in 0..MAX_PARTIES {
+            fields[i] = parties[i].to_field();
+        }
+        let custody_id = hash(fields, MAX_PARTIES);
+        let receiver = parties[receiver_idx];
+        storage.custody_map.at(custody_id).add_withdrawal(amount, receiver, receiver);
         
-        for i in 0..MAX_COUNTERPARTIES {
-            if !counterparties[i].eq(AztecAddress::from_field(0)) {
+        for i in 0..MAX_PARTIES {
+            if i != receiver_idx {
                 assert(
                     storage.custody_map.at(custody_id).has_withdraw_confirm(
-                        to,
+                        receiver,
                         custody_id,
                         amount as Field,
                         nonce,
-                        counterparties[i]
+                        parties[i]
                     )
                 );
-                storage.custody_map.at(custody_id).add_withdrawal(amount, to, counterparties[i]);
+                storage.custody_map.at(custody_id).add_withdrawal(amount, receiver, parties[i]);
             }
         }
 
         let cfg = storage.config.read();
         Token::at(cfg.token)
-            .transfer_in_public(context.this_address(), to, amount as u128, 0)
+            .transfer_in_public(context.this_address(), receiver, amount as u128, 0)
             .enqueue(&mut context);
 
     }
