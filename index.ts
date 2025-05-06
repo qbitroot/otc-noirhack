@@ -10,6 +10,7 @@ import {
   createLogger,
   createPXEClient,
   waitForPXE,
+  computeInnerAuthWitHash,
 } from '@aztec/aztec.js';
 import { createL1Clients, deployL1Contract } from '@aztec/ethereum';
 import {
@@ -212,8 +213,8 @@ async function main() {
 
   // Transfer tokens from custody ID 0 back to address
   const withdrawAmount = BigInt(50);
-  await psymmContract.methods
-    .custody_to_address(ownerAztecAddress, counterparties, custodyId, withdrawAmount)
+  await psymmContract.withWallet(ownerWallet).methods
+    .custody_to_address(ownerAztecAddress, counterparties, custodyId, withdrawAmount, 0)
     .send()
     .wait();
   logger.info(`Transferred ${withdrawAmount} tokens from custody ID ${custodyId} to address`);

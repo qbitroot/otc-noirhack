@@ -52,8 +52,8 @@ pub contract pSymm {
     }
 
     #[private]
-    fn custody_balance_from(custody_id: Field, deposit_owner: AztecAddress) -> Field {
-        storage.custody_map.at(custody_id).get_balance_from(context.msg_sender(), deposit_owner)
+    fn custody_balance_from(custody_id: Field, party: AztecAddress) -> Field {
+        storage.custody_map.at(custody_id).get_balance_from(context.msg_sender(), party)
     }
 
 
@@ -81,22 +81,43 @@ pub contract pSymm {
     }
 
     #[private]
+    fn approve_withdrawal(
+        to: AztecAddress,
+        custody_id: Field,
+        amount: u64,
+        nonce: Field
+    ) {
+        storage.custody_map.at(custody_id).add_withdraw_confirm(
+            to,
+            custody_id,
+            amount as Field,
+            nonce,
+            context.msg_sender()
+        );
+    }
+
+    #[private]
     fn custody_to_address(
-        to: AztecAddress, counterparties: [AztecAddress; MAX_COUNTERPARTIES],
-        custody_id: Field, amount: u64, nonce: Field
+        to: AztecAddress,
+        counterparties: [AztecAddress; MAX_COUNTERPARTIES],
+        custody_id: Field,
+        amount: u64,
+        nonce: Field
     ) {
         storage.custody_map.at(custody_id).add_withdrawal(amount, to, to);
+        
         for i in 0..MAX_COUNTERPARTIES {
             if !counterparties[i].eq(AztecAddress::from_field(0)) {
+                assert(
+                    storage.custody_map.at(custody_id).has_withdraw_confirm(
+                        to,
+                        custody_id,
+                        amount as Field,
+                        nonce,
+                        counterparties[i]
+                    )
+                );
                 storage.custody_map.at(custody_id).add_withdrawal(amount, to, counterparties[i]);
-            }
-        }
-
-        assert_inner_hash_valid_authwit(&mut context, to, 0);
-
-        for i in 0..MAX_COUNTERPARTIES {
-            if !counterparties[i].eq(AztecAddress::from_field(0)) {
-                assert_inner_hash_valid_authwit(&mut context, counterparties[i], 0);
             }
         }
 

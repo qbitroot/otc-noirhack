@@ -4,6 +4,7 @@ use dep::aztec::{
     note::{
         retrieved_note::RetrievedNote,
         note_getter_options::NoteGetterOptions,
+        note_interface::{NoteType, NoteHash}
     },
     state_vars::{PrivateSet, storage::Storage},
     macros::notes::note,
@@ -19,8 +20,26 @@ use dep::aztec::{
 
 #[note]
 #[derive(Eq)]
+pub struct WithdrawConfirmNote {
+    owner: AztecAddress,      // The address that can withdraw (recipient)
+    custody_id: Field,
+    amount: Field,
+    nonce: Field,
+    party: AztecAddress,      // The address giving confirmation
+    randomness: Field,
+}
+
+impl WithdrawConfirmNote {
+    pub fn new(owner: AztecAddress, custody_id: Field, amount: Field, nonce: Field, party: AztecAddress) -> Self {
+        let randomness = unsafe { random() };
+        WithdrawConfirmNote { owner, custody_id, amount, nonce, party, randomness }
+    }
+}
+
+#[note]
+#[derive(Eq)]
 pub struct DepositNote {
-    deposit_owner: AztecAddress,
+    party: AztecAddress,
     deposit_amount: Field,
     owner: AztecAddress, // view-only for decryption
     is_deposit: bool,    // true for deposits, false for withdrawals
@@ -28,7 +47,7 @@ pub struct DepositNote {
 }
 
 impl DepositNote {
-    pub fn new(deposit_owner: AztecAddress, deposit_amount: Field, owner: AztecAddress, is_deposit: bool) -> Self {
+    pub fn new(party: AztecAddress, deposit_amount: Field, owner: AztecAddress, is_deposit: bool) -> Self {
         // Safety: We use the randomness to preserve the privacy of the note recipient by preventing brute-forcing,
         // so a malicious sender could use non-random values to make the note less private. But they already know
         // the full note pre-image anyway, and so the recipient already trusts them to not disclose this
@@ -36,11 +55,11 @@ impl DepositNote {
 
         let randomness = unsafe { random() };
 
-        DepositNote { deposit_owner, deposit_amount, owner, is_deposit, randomness }
+        DepositNote { party, deposit_amount, owner, is_deposit, randomness }
     }
 
-    pub fn deposit_owner(self) -> AztecAddress {
-        self.deposit_owner
+    pub fn party(self) -> AztecAddress {
+        self.party
     }
     pub fn owner(self) -> AztecAddress {
         self.owner
@@ -57,82 +76,46 @@ impl DepositNote {
 pub struct Custody<Context> {
     context: Context,
     set: PrivateSet<DepositNote, Context>,
+    withdraw_confirms: PrivateSet<WithdrawConfirmNote, Context>,
 }
 
 // TODO(#13824): remove this impl once we allow structs to hold state variables.
-impl<Context> Storage<1> for Custody<Context> {
+impl<Context> Storage<2> for Custody<Context> {
     fn get_storage_slot(self) -> Field {
-        self.set.get_storage_slot()
+        self.set.get_storage_slot() + self.withdraw_confirms.get_storage_slot()
     }
 }
 
 impl<Context> Custody<Context> {
     pub fn new(context: Context, storage_slot: Field) -> Self {
-        Custody { context, set: PrivateSet::new(context, storage_slot) }
-    }
-}
-
-pub struct BalanceArgs {
-    from: AztecAddress,
-}
-
-pub fn filter_notes_by_owner(
-    notes: [Option<RetrievedNote<DepositNote>>; MAX_NOTE_HASH_READ_REQUESTS_PER_CALL],
-    args: BalanceArgs,
-) -> [Option<RetrievedNote<DepositNote>>; MAX_NOTE_HASH_READ_REQUESTS_PER_CALL] {
-    let mut selected = [Option::none(); MAX_NOTE_HASH_READ_REQUESTS_PER_CALL];
-
-    for i in 0..notes.len() {
-        if notes[i].is_some() {
-            let retrieved_note = notes[i].unwrap_unchecked();
-            if retrieved_note.note.owner().eq(args.from) {
-                selected[i] = Option::some(retrieved_note);
-            }
+        Custody { 
+            context, 
+            set: PrivateSet::new(context, storage_slot),
+            withdraw_confirms: PrivateSet::new(context, storage_slot + 1)
         }
     }
-
-    selected
 }
 
+
 impl Custody<&mut PrivateContext> {
-    pub fn add_deposit(self, amount: u64, deposit_owner: AztecAddress, owner: AztecAddress) {
-        let note = DepositNote::new(deposit_owner, amount as Field, owner, true);
+    pub fn add_deposit(self, amount: u64, party: AztecAddress, owner: AztecAddress) {
+        let note = DepositNote::new(party, amount as Field, owner, true);
         self.set.insert(note).emit(encode_and_encrypt_note(self.context, owner, owner));
     }
 
-    pub fn add_withdrawal(self, amount: u64, deposit_owner: AztecAddress, owner: AztecAddress) {
-        let note = DepositNote::new(deposit_owner, amount as Field, owner, false);
+    pub fn add_withdrawal(self, amount: u64, party: AztecAddress, owner: AztecAddress) {
+        let note = DepositNote::new(party, amount as Field, owner, false);
         self.set.insert(note).emit(encode_and_encrypt_note(self.context, owner, owner));
     }
 
     pub fn get_balance(self, from: AztecAddress) -> Field {
         let mut balance = 0;
-        let mut options = NoteGetterOptions::with_filter(filter_notes_by_owner, BalanceArgs { from });
-        let notes = self.set.get_notes(options);
-        
-        for i in 0..options.limit {
-            if i < notes.len() {
-                let note = notes.get_unchecked(i).note;
-                if note.is_deposit() {
-                    balance += note.deposit_amount();
-                } else {
-                    balance -= note.deposit_amount();
-                }
-            }
-        }
-        
-        balance
-    }
+        let notes = self.set.get_notes(NoteGetterOptions::new());
 
-    pub fn get_balance_from(self, from: AztecAddress, deposit_owner: AztecAddress) -> Field {
-        let mut balance = 0;
-        let mut options = NoteGetterOptions::with_filter(filter_notes_by_owner, BalanceArgs { from });
-        let notes = self.set.get_notes(options);
-        
-        for i in 0..options.limit {
+        for i in 0..notes.max_len() {
             if i < notes.len() {
-                let note = notes.get_unchecked(i).note;
-                if note.deposit_owner().eq(deposit_owner) {
+            let note = notes.get_unchecked(i).note;
+                if note.owner().eq(from) {
                     if note.is_deposit() {
                         balance += note.deposit_amount();
                     } else {
@@ -141,8 +124,49 @@ impl Custody<&mut PrivateContext> {
                 }
             }
         }
-        
+
         balance
+    }
+
+    pub fn get_balance_from(self, from: AztecAddress, party: AztecAddress) -> Field {
+        let mut balance = 0;
+        let notes = self.set.get_notes(NoteGetterOptions::new());
+
+        for i in 0..notes.max_len() {
+            if i < notes.len() {
+            let note = notes.get_unchecked(i).note;
+                if note.owner().eq(from) & note.party().eq(party) {
+                    if note.is_deposit() {
+                        balance += note.deposit_amount();
+                    } else {
+                        balance -= note.deposit_amount();
+                    }
+                }
+            }
+        }
+
+        balance
+    }
+
+    pub fn add_withdraw_confirm(self, owner: AztecAddress, custody_id: Field, amount: Field, nonce: Field, party: AztecAddress) {
+        let note = WithdrawConfirmNote::new(owner, custody_id, amount, nonce, party);
+        self.withdraw_confirms.insert(note).emit(encode_and_encrypt_note(self.context, owner, owner));
+    }
+
+    pub fn has_withdraw_confirm(self, owner: AztecAddress, custody_id: Field, amount: Field, nonce: Field, party: AztecAddress) -> bool {
+        let notes = self.withdraw_confirms.get_notes(NoteGetterOptions::new());
+        let mut matches = 0;
+
+        for i in 0..notes.max_len() {
+            if i < notes.len() {
+                let note = notes.get_unchecked(i).note;
+                matches += if (note.custody_id == custody_id) &
+                             (note.amount == amount) &
+                             (note.nonce == nonce) &
+                             note.party.eq(party) { 1 } else { 0 };
+            }
+        }
+        matches > 0
     }
 }
 
