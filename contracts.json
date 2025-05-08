@@ -1,0 +1,8 @@
+{
+  "l2Token": "0x2def5211466d61a599a26a7a1d31144d37024bfada1dc8da364a16bb12ad187a",
+  "psymm": "0x03be5137cb81dd31059f4f1b9ecf5e9906801e9aef44eda11aa13b7eef592246",
+  "l1Token": "0x7a2088a1bfc9d81c55368ae168c2c02570cb814f",
+  "feeAssetHandler": "0x09635f643e140090a9a8dcd712ed6285858cebef",
+  "l1Portal": "0x67d269191c92caf3cd7723f116c85e6e9bf55933",
+  "l2Bridge": "0x19a9bcdf625ba9438e1ba9b71eac09d57c57cf65e92e8c21c5137a38fa3c7eff"
+}

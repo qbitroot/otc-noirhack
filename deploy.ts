@@ -127,8 +127,15 @@ async function main() {
     l2Bridge: l2BridgeContract.address
   };
 
-  fs.writeFileSync('contracts.json', JSON.stringify(contracts, null, 2));
-  logger.info('Contract addresses written to contracts.json');
+  // Ensure web-demo/public directory exists
+  const publicDir = './web-demo/public';
+  if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true });
+  }
+
+  // Write contracts.json to web-demo/public
+  fs.writeFileSync(`${publicDir}/contracts.json`, JSON.stringify(contracts, null, 2));
+  logger.info('Contract addresses written to web-demo/public/contracts.json');
 }
 
 main().catch(error => {

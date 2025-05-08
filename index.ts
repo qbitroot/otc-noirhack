@@ -30,8 +30,8 @@ const setupSandbox = async () => {
   return pxe;
 };
 async function main() {
-  // Read deployed contract addresses
-  const contracts = JSON.parse(fs.readFileSync('contracts.json', 'utf8'));
+  // Read deployed contract addresses from web-demo/public
+  const contracts = JSON.parse(fs.readFileSync('./web-demo/public/contracts.json', 'utf8'));
   
   const logger = createLogger('psymm');
   const pxe = await setupSandbox();

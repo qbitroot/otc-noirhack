@@ -127,35 +127,41 @@ custody_map: {
     }
     
 
-  public static get notes(): ContractNotes<'UintNote' | 'ValueNote' | 'DepositNote'> {
+  public static get notes(): ContractNotes<'UintNote' | 'DepositNote' | 'WithdrawConfirmNote'> {
     return {
       UintNote: {
-          id: new NoteSelector(1),
-        },
-ValueNote: {
           id: new NoteSelector(0),
         },
 DepositNote: {
           id: new NoteSelector(2),
+        },
+WithdrawConfirmNote: {
+          id: new NoteSelector(1),
         }
-    } as ContractNotes<'UintNote' | 'ValueNote' | 'DepositNote'>;
+    } as ContractNotes<'UintNote' | 'DepositNote' | 'WithdrawConfirmNote'>;
   }
   
 
   /** Type-safe wrappers for the public methods exposed by the contract. */
   public declare methods: {
     
-    /** address_to_custody(from: struct, counterparties: array, custody_id: field, amount: integer, nonce: field) */
-    address_to_custody: ((from: AztecAddressLike, counterparties: AztecAddressLike[], custody_id: FieldLike, amount: (bigint | number), nonce: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
+    /** address_to_custody(custody_id: field, parties: array, sender_idx: integer, amount: integer, nonce: field) */
+    address_to_custody: ((custody_id: FieldLike, parties: AztecAddressLike[], sender_idx: (bigint | number), amount: (bigint | number), nonce: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
+
+    /** approve_withdrawal(to: struct, custody_id: field, amount: integer, nonce: field) */
+    approve_withdrawal: ((to: AztecAddressLike, custody_id: FieldLike, amount: (bigint | number), nonce: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
     /** constructor(token: struct) */
     constructor: ((token: AztecAddressLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
-    /** custody_balance(custody_id: field, deposit_owner: struct) */
-    custody_balance: ((custody_id: FieldLike, deposit_owner: AztecAddressLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
+    /** custody_balance(custody_id: field) */
+    custody_balance: ((custody_id: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
-    /** custody_to_address(to: struct, counterparties: array, custody_id: field, amount: integer) */
-    custody_to_address: ((to: AztecAddressLike, counterparties: AztecAddressLike[], custody_id: FieldLike, amount: (bigint | number)) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
+    /** custody_balance_from(custody_id: field, party: struct) */
+    custody_balance_from: ((custody_id: FieldLike, party: AztecAddressLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
+
+    /** custody_to_address(custody_id: field, parties: array, receiver_idx: integer, amount: integer, nonce: field) */
+    custody_to_address: ((custody_id: FieldLike, parties: AztecAddressLike[], receiver_idx: (bigint | number), amount: (bigint | number), nonce: FieldLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
     /** get_config() */
     get_config: (() => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
