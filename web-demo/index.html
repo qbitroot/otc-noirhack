@@ -175,10 +175,10 @@
         let l1ContractAddressesNodeInfo; // from pxe.getNodeInfo()
         let l2Token, psymm, l1Token, feeAssetHandler, l1Portal, l2Bridge; // Contract instances/addresses
 
-        const MINT_AMOUNT = BigInt(10000 * 10**18); // Assuming 18 decimals for ERC20
-        const TRANSFER_AMOUNT_TO_CUSTODY = BigInt(100 * 10**6);
-        const WITHDRAW_AMOUNT_FROM_CUSTODY = BigInt(50 * 10**6);
-        const L1_WITHDRAW_AMOUNT = BigInt(50 * 10**6);
+        const MINT_AMOUNT = BigInt(10000); // Assuming 18 decimals for ERC20
+        const TRANSFER_AMOUNT_TO_CUSTODY = BigInt(100);
+        const WITHDRAW_AMOUNT_FROM_CUSTODY = BigInt(50);
+        const L1_WITHDRAW_AMOUNT = BigInt(50);
 
 
         // --- UI Elements ---
@@ -314,14 +314,6 @@
             }
         });
 
-        // --- Deployment Functions (Adapted from deploy.ts) ---
-        async function deployL1ContractWrapper(walletClient, publicClient, abi, bytecode, args = []) {
-            logMessage(`Deploying L1 contract with ABI: ${abi[0]?.name || 'Unknown ABI Name'}...`);
-            const deployOutput = await deployL1Contract(walletClient, publicClient, abi, bytecode, args);
-            logMessage(`L1 Contract ${abi[0]?.name || ''} deployed at ${deployOutput.address.toString()}`);
-            return deployOutput.address;
-        }
-
         deployContractsButton.addEventListener('click', async () => {
             if (!pxe || !ownerWallet || !l1WalletClient || !l1PublicClient) {
                 logMessage("PXE or L1 clients not initialized.", true);
@@ -377,7 +369,12 @@
                     chain: {
                         id: 31337,
                         name: 'Local',
-                        network: 'local'
+                        network: 'local',
+                        nativeCurrency: {
+                            name: 'Ether',
+                            symbol: 'ETH',
+                            decimals: 18
+                        }
                     }
                 });
                 logMessage(`FeeAssetHandler (${feeAssetHandler.toString()}) added as minter for L1 token`);
@@ -416,7 +413,12 @@
                     chain: {
                         id: 31337,
                         name: 'Local',
-                        network: 'local'
+                        network: 'local',
+                        nativeCurrency: {
+                            name: 'Ether',
+                            symbol: 'ETH',
+                            decimals: 18
+                        }
                     }
                 });
                 logMessage('L1 TokenPortal initialized.');
@@ -577,7 +579,6 @@
                 });
                 logMessage('Private authwit created for L2 transfer to custody.');
 
-				debugger;
                 await psymm.methods
                     .address_to_custody(custodyId, parties, 0, TRANSFER_AMOUNT_TO_CUSTODY, transferNonceToCustody)
                     .send({ authWitnesses: [authWitMsgHash] })
@@ -703,7 +704,7 @@
                 );
 
                 const l2TxReceipt = await l2Bridge.methods
-                    .exit_to_l1_private(l2Token.address, ownerEthAddress, L1_WITHDRAW_AMOUNT, EthAddress.ZERO, nonce)
+                    .exit_to_l1_private(l2Token.address, ownerEthAddress.toString(), L1_WITHDRAW_AMOUNT, EthAddress.ZERO, nonce)
                     .send({ authWitnesses: [authwitBurn] })
                     .wait();
                 logMessage('Withdrawal initiated on L2 privately. Tx hash: ' + l2TxReceipt.txHash.toString());
@@ -728,18 +729,18 @@
                     l2TxReceipt.blockNumber, // Use the block number from the L2 tx receipt
                     l2ToL1MessageLeaf,
                 );
-                logMessage(`L2 to L1 message witness obtained. Index: ${l2ToL1MessageIndex}, Path Root: ${siblingPath.root.toString()}`);
+                logMessage(`L2 to L1 message witness obtained. Index: ${l2ToL1MessageIndex}`);
 
                 await l1PortalManager.withdrawFunds(
                     L1_WITHDRAW_AMOUNT,
-                    ownerEthAddress,
+                    ownerEthAddress.toString(),
                     BigInt(l2TxReceipt.blockNumber),
                     l2ToL1MessageIndex,
                     siblingPath,
                 );
                 logMessage('Withdrawal completed on L1.');
 
-                const newL1Balance = await l1TokenManager.getL1TokenBalance(ownerEthAddress);
+                const newL1Balance = await l1TokenManager.getL1TokenBalance(ownerEthAddress.toString());
                 logMessage(`New L1 balance of ${ownerEthAddress.toString()} is ${newL1Balance}`);
                 updateActionStatus(actionKey, `Withdrawn to L1. L1 Bal: ${newL1Balance}`);
 

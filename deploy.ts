@@ -18,6 +18,17 @@ import * as fs from 'fs';
 const MNEMONIC = 'test test test test test test test test test test test junk';
 const { ETHEREUM_HOSTS = 'http://localhost:8545' } = process.env;
 const MINT_AMOUNT = BigInt(1e4);
+        
+const LOCAL_CHAIN_CONFIG = {
+    id: 31337,
+    name: 'Local',
+    network: 'local',
+    nativeCurrency: {
+        name: 'Ether',
+        symbol: 'ETH',
+        decimals: 18
+    }
+};
 
 const { walletClient, publicClient } = createL1Clients(ETHEREUM_HOSTS.split(','), MNEMONIC);
 
