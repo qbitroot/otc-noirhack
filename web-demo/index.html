@@ -1,13 +1,875 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aztec OTC Interactive Demo</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1, h2 { color: #5D4037; }
+        h2 { border-bottom: 1px solid #eee; padding-bottom: 10px; margin-top: 30px; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input[type="text"] { width: calc(100% - 22px); padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background-color: #8D6E63; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px; margin-right: 10px; font-size: 1em; }
+        button:hover { background-color: #6D4C41; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        #logOutput { margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 4px; background-color: #f9f9f9; height: 300px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; }
+        .action-section button { display: block; width: 100%; margin-bottom: 10px; text-align: left; }
+        .status { font-style: italic; color: #777; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Aztec OTC Interactive Demo</h1>
+
+        <h2>1. Initialization</h2>
+        <div>
+            <label for="ethHostInput">Ethereum Host (L1 RPC):</label>
+            <input type="text" id="ethHostInput" value="http://localhost:8545">
+        </div>
+        <div>
+            <label for="pxeUrlInput">PXE URL:</label>
+            <input type="text" id="pxeUrlInput" value="http://localhost:8080">
+        </div>
+        <button id="connectMetaMaskButton">Connect MetaMask & Init L1 Clients</button>
+        <button id="initPxeButton">Initialize PXE</button>
+        <p class="status" id="initStatus">Status: Not Initialized</p>
+
+        <h2>2. Deploy Contracts</h2>
+        <div style="display: flex; gap: 20px;">
+            <div style="flex: 1;">
+                <button id="deployContractsButton" disabled>Deploy All Contracts</button>
+                <p class="status" id="deployStatus">Status: Contracts not deployed</p>
+                <div id="contractAddresses" style="margin-top:10px; font-size:0.9em;"></div>
+            </div>
+            <div style="flex: 1; border-left: 1px solid #ddd; padding-left: 20px;">
+                <h3>Contract Addresses</h3>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <button id="exportContractsButton" disabled>Export</button>
+                    <input type="file" id="importContractsInput" accept=".json" style="display: none;">
+                    <button id="importContractsButton">Import</button>
+                </div>
+                <pre id="contractsJson" style="background: #f5f5f5; padding: 10px; border-radius: 4px; max-height: 300px; overflow: auto;">No contracts deployed yet</pre>
+            </div>
+        </div>
+
+
+        <h2>3. OTC Scenario Actions</h2>
+        <div class="action-section">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Action</th>
+                        <th>Status</th>
+                        <th>Execute</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Bridge Tokens L1 to L2 (Private)</td>
+                        <td id="actionStatus_bridge">Pending</td>
+                        <td><button id="bridgeTokensButton" disabled>Bridge Tokens</button></td>
+                    </tr>
+                    <tr>
+                        <td>Send 2 Dummy Txs (Advance L1->L2 Messages)</td>
+                        <td id="actionStatus_dummy1">Pending</td>
+                        <td><button id="dummyTxsButton1" disabled>Send Dummy Txs</button></td>
+                    </tr>
+                    <tr>
+                        <td>Claim Bridged Tokens on L2</td>
+                        <td id="actionStatus_claim">Pending</td>
+                        <td><button id="claimTokensButton" disabled>Claim Tokens</button></td>
+                    </tr>
+                    <tr>
+                        <td>Get pSymm Config</td>
+                        <td id="actionStatus_getConfig">Pending</td>
+                        <td><button id="getConfigButton" disabled>Get Config</button></td>
+                    </tr>
+                    <tr>
+                        <td>Transfer Tokens to Custody (Private)</td>
+                        <td id="actionStatus_toCustody">Pending</td>
+                        <td><button id="transferToCustodyButton" disabled>Transfer to Custody</button></td>
+                    </tr>
+                    <tr>
+                        <td>Check Custody Balances</td>
+                        <td id="actionStatus_checkCustody">Pending</td>
+                        <td><button id="checkCustodyBalanceButton" disabled>Check Balances</button></td>
+                    </tr>
+                    <tr>
+                        <td>Approve Withdrawal from Custody (by Second User)</td>
+                        <td id="actionStatus_approveWithdraw">Pending</td>
+                        <td><button id="approveWithdrawalButton" disabled>Approve Withdrawal</button></td>
+                    </tr>
+                    <tr>
+                        <td>Withdraw from Custody to Address (by Owner)</td>
+                        <td id="actionStatus_fromCustody">Pending</td>
+                        <td><button id="withdrawFromCustodyButton" disabled>Withdraw from Custody</button></td>
+                    </tr>
+                    <tr>
+                        <td>Check Final Custody & L2 Balances</td>
+                        <td id="actionStatus_checkFinal">Pending</td>
+                        <td><button id="checkFinalBalancesButton" disabled>Check Final Balances</button></td>
+                    </tr>
+                     <tr>
+                        <td>Send 2 Dummy Txs (Advance L2->L1 Messages)</td>
+                        <td id="actionStatus_dummy2">Pending</td>
+                        <td><button id="dummyTxsButton2" disabled>Send Dummy Txs</button></td>
+                    </tr>
+                    <tr>
+                        <td>Withdraw Tokens L2 to L1 (Private)</td>
+                        <td id="actionStatus_withdrawL1">Pending</td>
+                        <td><button id="withdrawToL1Button" disabled>Withdraw to L1</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2>Logs</h2>
+        <div id="logOutput"></div>
+    </div>
+
+    <script type="module">
+        import { getInitialTestAccountsWallets } from '@aztec/accounts/testing';
+        import {
+          EthAddress,
+          Fr,
+          L1TokenManager,
+          L1TokenPortalManager,
+          createLogger,
+          createPXEClient,
+          waitForPXE,
+        } from '@aztec/aztec.js';
+        import { createL1Clients, deployL1Contract } from '@aztec/ethereum';
+        import {
+          FeeAssetHandlerAbi,
+          FeeAssetHandlerBytecode,
+          TestERC20Abi,
+          TestERC20Bytecode,
+          TokenPortalAbi,
+          TokenPortalBytecode,
+        } from '@aztec/l1-artifacts';
+        import { TokenContract } from '@aztec/noir-contracts.js/Token';
+        import { TokenBridgeContract } from '@aztec/noir-contracts.js/TokenBridge';
+        import { pSymmContract } from './contracts/psymm/src/artifacts/pSymm';
+
+
+        import { createWalletClient, createPublicClient, http, custom, getContract } from 'viem';
+        // You might need to import specific chains from 'viem/chains'
+        // For local development, often no specific chain needed or use a local anvil/hardhat chain definition
+        // import { foundry } from 'viem/chains';
+
+
+        // --- Global State ---
+        let pxe;
+        let wallets = [];
+        let ownerWallet, secondWallet;
+        let ownerAztecAddress, secondAztecAddress;
+        let l1WalletClient, l1PublicClient;
+        let ownerEthAddress; // This will be an EthAddress object
+        let logger;
+
+        let l1ContractAddressesNodeInfo; // from pxe.getNodeInfo()
+        let l2Token, psymm, l1Token, feeAssetHandler, l1Portal, l2Bridge; // Contract instances/addresses
+
+        const MINT_AMOUNT = BigInt(10000 * 10**18); // Assuming 18 decimals for ERC20
+        const TRANSFER_AMOUNT_TO_CUSTODY = BigInt(100 * 10**6);
+        const WITHDRAW_AMOUNT_FROM_CUSTODY = BigInt(50 * 10**6);
+        const L1_WITHDRAW_AMOUNT = BigInt(50 * 10**6);
+
+
+        // --- UI Elements ---
+        const ethHostInput = document.getElementById('ethHostInput');
+        const pxeUrlInput = document.getElementById('pxeUrlInput');
+        const connectMetaMaskButton = document.getElementById('connectMetaMaskButton');
+        const initPxeButton = document.getElementById('initPxeButton');
+        const deployContractsButton = document.getElementById('deployContractsButton');
+        const logOutput = document.getElementById('logOutput');
+        const initStatus = document.getElementById('initStatus');
+        const deployStatus = document.getElementById('deployStatus');
+        const contractAddressesDiv = document.getElementById('contractAddresses');
+
+        const actionButtons = {
+            bridgeTokens: document.getElementById('bridgeTokensButton'),
+            dummyTxs1: document.getElementById('dummyTxsButton1'),
+            claimTokens: document.getElementById('claimTokensButton'),
+            getConfig: document.getElementById('getConfigButton'),
+            transferToCustody: document.getElementById('transferToCustodyButton'),
+            checkCustodyBalance: document.getElementById('checkCustodyBalanceButton'),
+            approveWithdrawal: document.getElementById('approveWithdrawalButton'),
+            withdrawFromCustody: document.getElementById('withdrawFromCustodyButton'),
+            checkFinalBalances: document.getElementById('checkFinalBalancesButton'),
+            dummyTxs2: document.getElementById('dummyTxsButton2'),
+            withdrawToL1: document.getElementById('withdrawToL1Button'),
+        };
+
+        // --- Logging ---
+        function logMessage(message, isError = false) {
+            console.log(message);
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            if (isError) logEntry.style.color = 'red';
+            logOutput.appendChild(logEntry);
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+
+        function handleError(error, operationName) {
+            const errorMessage = error.message || error.toString();
+            logMessage(`ERROR during ${operationName}: ${errorMessage}`, true);
+            if (error.stack) console.error(error.stack);
+            updateActionStatus(operationName, `Error: ${errorMessage.substring(0,50)}...`);
+        }
+
+        function updateInitStatus(message) {
+            initStatus.textContent = `Status: ${message}`;
+        }
+        function updateDeployStatus(message) {
+            deployStatus.textContent = `Status: ${message}`;
+        }
+        function updateActionStatus(actionKey, message) {
+            const statusEl = document.getElementById(`actionStatus_${actionKey}`);
+            if (statusEl) statusEl.textContent = message;
+        }
+
+        // --- Initialization Functions ---
+        connectMetaMaskButton.addEventListener('click', async () => {
+            if (!window.ethereum) {
+                logMessage("MetaMask is not installed!", true);
+                updateInitStatus("MetaMask not found");
+                return;
+            }
+            try {
+                logMessage("Connecting to MetaMask and initializing L1 clients...");
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                ownerEthAddress = EthAddress.fromString(accounts[0]);
+
+                // Create Viem clients using MetaMask provider
+                const chain = {
+                    id: 31337, // Default local chain ID
+                    name: 'Local',
+                    network: 'local',
+                    nativeCurrency: {
+                        name: 'Ether',
+                        symbol: 'ETH',
+                        decimals: 18
+                    },
+                    rpcUrls: {
+                        default: { http: [ethHostInput.value] }
+                    }
+                };
+                
+                l1WalletClient = createWalletClient({
+                    account: ownerEthAddress.toString(), // viem expects string address
+                    transport: custom(window.ethereum),
+                    chain
+                });
+                l1PublicClient = createPublicClient({
+                    transport: http(ethHostInput.value),
+                    chain
+                });
+
+                logMessage(`MetaMask connected. Account: ${ownerEthAddress.toString()}`);
+                logMessage("L1 clients initialized.");
+                updateInitStatus(`MetaMask Connected: ${ownerEthAddress.toString().substring(0,10)}... L1 Clients OK.`);
+                initPxeButton.disabled = false;
+            } catch (e) {
+                handleError(e, "MetaMask Connection/L1 Client Init");
+                updateInitStatus("Error connecting MetaMask or L1 init.");
+            }
+        });
+
+        initPxeButton.addEventListener('click', async () => {
+            if (!l1WalletClient) {
+                logMessage("Please connect to MetaMask first.", true);
+                return;
+            }
+            try {
+                logMessage(`Initializing PXE client at ${pxeUrlInput.value}...`);
+                pxe = await createPXEClient(pxeUrlInput.value);
+                await waitForPXE(pxe);
+                logger = createLogger('aztec-otc-demo');
+                logger.info("PXE Client Initialized.");
+
+                wallets = await getInitialTestAccountsWallets(pxe);
+                ownerWallet = wallets[0];
+                secondWallet = wallets[1]; // Assuming at least two wallets are provided by PXE
+                ownerAztecAddress = ownerWallet.getAddress();
+                secondAztecAddress = secondWallet.getAddress();
+
+                logger.info(`Owner Aztec Address: ${ownerAztecAddress.toString()}`);
+                logger.info(`Second User Aztec Address: ${secondAztecAddress.toString()}`);
+
+                l1ContractAddressesNodeInfo = (await pxe.getNodeInfo()).l1ContractAddresses;
+                logger.info(`Fetched L1 contract addresses from PXE node: Registry @ ${l1ContractAddressesNodeInfo.registryAddress.toString()}`);
+
+                logMessage("PXE initialized successfully.");
+                updateInitStatus(`MetaMask & L1 OK. PXE OK. Owner: ${ownerAztecAddress.toString().substring(0,10)}...`);
+                deployContractsButton.disabled = false;
+            } catch (e) {
+                handleError(e, "PXE Initialization");
+                updateInitStatus("Error initializing PXE.");
+            }
+        });
+
+        // --- Deployment Functions (Adapted from deploy.ts) ---
+        async function deployL1ContractWrapper(walletClient, publicClient, abi, bytecode, args = []) {
+            logMessage(`Deploying L1 contract with ABI: ${abi[0]?.name || 'Unknown ABI Name'}...`);
+            const deployOutput = await deployL1Contract(walletClient, publicClient, abi, bytecode, args);
+            logMessage(`L1 Contract ${abi[0]?.name || ''} deployed at ${deployOutput.address.toString()}`);
+            return deployOutput.address;
+        }
+
+        deployContractsButton.addEventListener('click', async () => {
+            if (!pxe || !ownerWallet || !l1WalletClient || !l1PublicClient) {
+                logMessage("PXE or L1 clients not initialized.", true);
+                return;
+            }
+            deployContractsButton.disabled = true;
+            updateDeployStatus("Deployment in progress...");
+            try {
+                logMessage("Starting contract deployments...");
+
+                // Deploy L2 token contract
+                logMessage("Deploying L2 TokenContract...");
+                l2Token = await TokenContract.deploy(ownerWallet, ownerAztecAddress, 'L2 Token', 'L2', 18)
+                    .send()
+                    .deployed();
+                logMessage(`L2 TokenContract deployed at ${l2Token.address.toString()}`);
+
+                // Deploy pSymm L2 contract
+                logMessage("Deploying pSymmContract...");
+                psymm = await pSymmContract.deploy(ownerWallet, l2Token.address)
+                    .send()
+                    .deployed();
+                logMessage(`pSymmContract deployed at ${psymm.address.toString()}`);
+
+                // Deploy L1 TestERC20
+                logMessage("Deploying L1 TestERC20...");
+                const constructorArgs = ['Test Token', 'TEST', ownerEthAddress.toString()];
+                l1Token = await deployL1Contract(l1WalletClient, l1PublicClient, TestERC20Abi, TestERC20Bytecode, constructorArgs).then(
+                    ({ address }) => address,
+                );
+                logMessage(`L1 TestERC20 deployed at ${l1Token.toString()}`);
+
+                // Deploy FeeAssetHandler
+                logMessage("Deploying L1 FeeAssetHandler...");
+                const feeAssetHandlerConstructorArgs = [ownerEthAddress.toString(), l1Token.toString(), MINT_AMOUNT];
+                feeAssetHandler = await deployL1Contract(
+                    l1WalletClient,
+                    l1PublicClient,
+                    FeeAssetHandlerAbi,
+                    FeeAssetHandlerBytecode,
+                    feeAssetHandlerConstructorArgs
+                ).then(({ address }) => address);
+                logMessage(`L1 FeeAssetHandler deployed at ${feeAssetHandler.toString()}`);
+
+                // Add Minter to L1 Token
+                logMessage(`Adding FeeAssetHandler as minter to L1 TestERC20...`);
+                const l1TokenContract = getContract({
+                    address: l1Token.toString(),
+                    abi: TestERC20Abi,
+                    client: { public: l1PublicClient, wallet: l1WalletClient }
+                });
+                await l1TokenContract.write.addMinter([feeAssetHandler.toString()], {
+                    chain: {
+                        id: 31337,
+                        name: 'Local',
+                        network: 'local'
+                    }
+                });
+                logMessage(`FeeAssetHandler (${feeAssetHandler.toString()}) added as minter for L1 token`);
+
+                // Deploy L1 TokenPortal
+                logMessage("Deploying L1 TokenPortal...");
+                l1Portal = await deployL1Contract(l1WalletClient, l1PublicClient, TokenPortalAbi, TokenPortalBytecode, []).then(
+                    ({ address }) => address,
+                );
+                logMessage(`L1 TokenPortal deployed at ${l1Portal.toString()}`);
+
+                // Deploy L2 TokenBridge
+                logMessage("Deploying L2 TokenBridgeContract...");
+                l2Bridge = await TokenBridgeContract.deploy(ownerWallet, l2Token.address, l1Portal)
+                    .send()
+                    .deployed();
+                logMessage(`L2 TokenBridgeContract deployed at ${l2Bridge.address.toString()}`);
+
+                // Authorize L2 bridge contract to mint tokens on L2 token contract
+                logMessage("Authorizing L2 Bridge on L2 TokenContract...");
+                await l2Token.methods.set_minter(l2Bridge.address, true).send().wait();
+                logMessage('L2 Bridge authorized to mint on L2 TokenContract.');
+
+                // Initialize L1 TokenPortal
+                logMessage("Initializing L1 TokenPortal...");
+                const l1PortalContract = getContract({
+                    address: l1Portal.toString(),
+                    abi: TokenPortalAbi,
+                    client: { public: l1PublicClient, wallet: l1WalletClient }
+                });
+                await l1PortalContract.write.initialize([
+                    l1ContractAddressesNodeInfo.registryAddress.toString(),
+                    l1Token.toString(),
+                    l2Bridge.address.toString()
+                ], {
+                    chain: {
+                        id: 31337,
+                        name: 'Local',
+                        network: 'local'
+                    }
+                });
+                logMessage('L1 TokenPortal initialized.');
+
+                updateDeployStatus("All contracts deployed successfully!");
+                logMessage("--- All contracts deployed successfully! ---");
+
+                contractAddressesDiv.innerHTML = `
+                    <p>L2 Token: ${l2Token.address.toString()}</p>
+                    <p>pSymm: ${psymm.address.toString()}</p>
+                    <p>L1 Token: ${l1Token.toString()}</p>
+                    <p>Fee Asset Handler: ${feeAssetHandler.toString()}</p>
+                    <p>L1 Portal: ${l1Portal.toString()}</p>
+                    <p>L2 Bridge: ${l2Bridge.address.toString()}</p>
+                `;
+
+                // Enable action buttons
+                Object.values(actionButtons).forEach(btn => btn.disabled = false);
+
+            } catch (e) {
+                handleError(e, "Contract Deployment");
+                updateDeployStatus("Error during contract deployment.");
+                deployContractsButton.disabled = false; // Re-enable on failure
+            }
+        });
+
+
+        // --- Scenario Actions (Adapted from index.ts) ---
+        let l1TokenManager, l1PortalManager;
+        let bridgeClaimDetails; // To store claim secret and messageLeafIndex
+
+        async function initializeManagers() {
+            if (l1TokenManager && l1PortalManager) return;
+
+            l1TokenManager = new L1TokenManager(
+                l1Token, // EthAddress from deployment
+                feeAssetHandler, // EthAddress from deployment
+                l1PublicClient,
+                l1WalletClient,
+                logger
+            );
+
+            l1PortalManager = new L1TokenPortalManager(
+                l1Portal, // EthAddress from deployment
+                l1Token, // EthAddress from deployment
+                feeAssetHandler, // EthAddress from deployment
+                l1ContractAddressesNodeInfo.outboxAddress,
+                l1PublicClient,
+                l1WalletClient,
+                logger,
+            );
+            logMessage("L1TokenManager and L1PortalManager initialized.");
+        }
+
+        actionButtons.bridgeTokens.addEventListener('click', async () => {
+            const actionKey = 'bridge';
+            updateActionStatus(actionKey, "Processing...");
+            actionButtons.bridgeTokens.disabled = true;
+            try {
+                await initializeManagers();
+                logMessage(`Bridging ${MINT_AMOUNT} tokens from L1 to L2 for ${ownerAztecAddress.toString()}...`);
+                try {
+                    bridgeClaimDetails = await l1PortalManager.bridgeTokensPrivate(ownerAztecAddress, MINT_AMOUNT, true);
+                    logMessage(`Tokens bridged from L1 to L2. Claim Secret: ${bridgeClaimDetails.claimSecret.toString()}, Leaf Index: ${bridgeClaimDetails.messageLeafIndex}`);
+                    updateActionStatus(actionKey, `Bridged ${MINT_AMOUNT} tokens`);
+                    
+                    // Enable the next action buttons
+                    actionButtons.dummyTxs1.disabled = false;
+                    actionButtons.claimTokens.disabled = false;
+                } catch (bridgeError) {
+                    logMessage(`Bridge error: ${bridgeError.message}`, true);
+                    console.error('Bridge error:', bridgeError);
+                    updateActionStatus(actionKey, "Bridge Failed");
+                    throw bridgeError;
+                }
+            } catch (e) { handleError(e, "Bridge Tokens L1->L2");
+            } finally { actionButtons.bridgeTokens.disabled = false; }
+        });
+
+        async function sendDummyTxs(actionKeySuffix) {
+            const actionKey = `dummy${actionKeySuffix}`;
+            updateActionStatus(actionKey, "Processing...");
+            actionButtons[`dummyTxs${actionKeySuffix}`].disabled = true;
+            try {
+                logMessage('Sending 2 dummy txs to advance L1->L2 message processing...');
+                await l2Token.methods.mint_to_public(ownerAztecAddress, 0n).send().wait();
+                await l2Token.methods.mint_to_public(ownerAztecAddress, 0n).send().wait();
+                logMessage('Sent 2 dummy txs.');
+                updateActionStatus(actionKey, "Dummy Txs Sent");
+            } catch (e) { handleError(e, "Send Dummy Txs");
+            } finally { actionButtons[`dummyTxs${actionKeySuffix}`].disabled = false; }
+        }
+        actionButtons.dummyTxs1.addEventListener('click', () => sendDummyTxs('1'));
+
+
+        actionButtons.claimTokens.addEventListener('click', async () => {
+            const actionKey = 'claim';
+            updateActionStatus(actionKey, "Processing...");
+            actionButtons.claimTokens.disabled = true;
+            try {
+                if (!bridgeClaimDetails) {
+                    logMessage("Bridge details not found. Please bridge tokens first.", true);
+                    updateActionStatus(actionKey, "Error: Bridge first");
+                    return;
+                }
+                logMessage(`Claiming tokens on L2 for ${ownerAztecAddress.toString()}...`);
+                await l2Bridge.methods
+                    .claim_private(ownerAztecAddress, MINT_AMOUNT, bridgeClaimDetails.claimSecret, bridgeClaimDetails.messageLeafIndex)
+                    .send()
+                    .wait();
+                const balance = await l2Token.methods.balance_of_private(ownerAztecAddress).simulate();
+                logMessage(`Tokens claimed. Private L2 balance of ${ownerAztecAddress.toString()} is ${balance}`);
+                updateActionStatus(actionKey, `Claimed. Balance: ${balance}`);
+            } catch (e) { handleError(e, "Claim L2 Tokens");
+            } finally { actionButtons.claimTokens.disabled = false; }
+        });
+
+        actionButtons.getConfig.addEventListener('click', async () => {
+            const actionKey = 'getConfig';
+            updateActionStatus(actionKey, "Processing...");
+            actionButtons.getConfig.disabled = true;
+            try {
+                logMessage("Getting pSymm config...");
+                const config = await psymm.methods.get_config().simulate();
+                logMessage(`pSymm config: token address = ${config.token.toString()}`);
+                updateActionStatus(actionKey, `Config OK. Token: ${config.token.toString().substring(0,10)}...`);
+            } catch (e) { handleError(e, "Get pSymm Config");
+            } finally { actionButtons.getConfig.disabled = false; }
+        });
+
+        let custodyId, transferNonceToCustody;
+        actionButtons.transferToCustody.addEventListener('click', async () => {
+            const actionKey = 'toCustody';
+            updateActionStatus(actionKey, "Processing...");
+            actionButtons.transferToCustody.disabled = true;
+            try {
+                logMessage(`Starting transfer to custody process...`);
+                logMessage(`Amount to transfer: ${TRANSFER_AMOUNT_TO_CUSTODY}`);
+                logMessage(`Owner address: ${ownerAztecAddress.toString()}`);
+                logMessage(`Second address: ${secondAztecAddress.toString()}`);
+                logMessage(`pSymm contract address: ${psymm.address.toString()}`);
+                logMessage(`L2 token contract address: ${l2Token.address.toString()}`);
+                
+                logMessage(`Importing poseidon2Hash...`);
+                const { poseidon2Hash } = await import("@zkpassport/poseidon2"); // Dynamic import
+                logMessage(`poseidon2Hash imported successfully`);
+
+                const parties = [ownerAztecAddress, secondAztecAddress];
+                const partyFields = parties.map(addr => BigInt(addr.toString()));
+                custodyId = poseidon2Hash(partyFields);
+                transferNonceToCustody = Fr.random();
+
+                logMessage(`Generated Custody ID: ${custodyId.toString()} for parties ${ownerAztecAddress.toString()} and ${secondAztecAddress.toString()}`);
+
+                const authWitMsgHash = await ownerWallet.createAuthWit({
+                    caller: psymm.address,
+                    action: l2Token.methods.transfer_to_public(ownerAztecAddress, psymm.address, TRANSFER_AMOUNT_TO_CUSTODY, transferNonceToCustody),
+                });
+                logMessage('Private authwit created for L2 transfer to custody.');
+
+				debugger;
+                await psymm.methods
+                    .address_to_custody(custodyId, parties, 0, TRANSFER_AMOUNT_TO_CUSTODY, transferNonceToCustody)
+                    .send({ authWitnesses: [authWitMsgHash] })
+                    .wait();
+                logMessage(`Transferred ${TRANSFER_AMOUNT_TO_CUSTODY} tokens to custody ID ${custodyId.toString()} privately.`);
+                updateActionStatus(actionKey, `Transferred to custody ${custodyId.toString().substring(0,10)}...`);
+            } catch (e) { handleError(e, "Transfer to Custody");
+            } finally { actionButtons.transferToCustody.disabled = false; }
+        });
+
+        actionButtons.checkCustodyBalance.addEventListener('click', async () => {
+            const actionKey = 'checkCustody';
+            updateActionStatus(actionKey, "Processing...");
+            actionButtons.checkCustodyBalance.disabled = true;
+            try {
+                if (!custodyId) {
+                    logMessage("Custody ID not set. Please transfer to custody first.", true);
+                    updateActionStatus(actionKey, "Error: Custody ID missing");
+                    return;
+                }
+                logMessage(`Checking custody balance for ID ${custodyId.toString()}...`);
+                const custodyBalanceOwnerView = await psymm.methods.custody_balance(custodyId, ownerAztecAddress).simulate();
+                logMessage(`Custody balance for ID ${custodyId.toString()} (Owner's view): ${custodyBalanceOwnerView}`);
+
+                const custodyBalanceSecondView = await psymm.withWallet(secondWallet).methods.custody_balance(custodyId, ownerAztecAddress).simulate();
+                logMessage(`Custody balance for ID ${custodyId.toString()} (Second User's view of Owner's balance): ${custodyBalanceSecondView}`);
+                updateActionStatus(actionKey, `Owner: ${custodyBalanceOwnerView}, SecondView: ${custodyBalanceSecondView}`);
+            } catch (e) { handleError(e, "Check Custody Balance");
+            } finally { actionButtons.checkCustodyBalance.disabled = false; }
+        });
+
+        let withdrawNonceFromCustody;
+        actionButtons.approveWithdrawal.addEventListener('click', async () => {
+            const actionKey = 'approveWithdraw';
+            updateActionStatus(actionKey, "Processing...");
+            actionButtons.approveWithdrawal.disabled = true;
+            try {
+                if (!custodyId) {
+                    logMessage("Custody ID not set.", true);
+                    updateActionStatus(actionKey, "Error: Custody ID missing");
+                    return;
+                }
+                withdrawNonceFromCustody = Fr.random();
+                logMessage(`Second user (${secondAztecAddress.toString()}) approving withdrawal of ${WITHDRAW_AMOUNT_FROM_CUSTODY} for owner (${ownerAztecAddress.toString()})...`);
+                await psymm.withWallet(secondWallet).methods
+                    .approve_withdrawal(ownerAztecAddress, custodyId, WITHDRAW_AMOUNT_FROM_CUSTODY, withdrawNonceFromCustody)
+                    .send()
+                    .wait();
+                logMessage(`Counterparty approved withdrawal of ${WITHDRAW_AMOUNT_FROM_CUSTODY} tokens. Nonce: ${withdrawNonceFromCustody.toString()}`);
+                updateActionStatus(actionKey, "Withdrawal Approved by Second User");
+            } catch (e) { handleError(e, "Approve Withdrawal from Custody");
+            } finally { actionButtons.approveWithdrawal.disabled = false; }
+        });
+
+        actionButtons.withdrawFromCustody.addEventListener('click', async () => {
+            const actionKey = 'fromCustody';
+            updateActionStatus(actionKey, "Processing...");
+            actionButtons.withdrawFromCustody.disabled = true;
+            try {
+                if (!custodyId || !withdrawNonceFromCustody) {
+                    logMessage("Custody ID or withdrawal nonce not set. Ensure approval step is done.", true);
+                    updateActionStatus(actionKey, "Error: Approval needed");
+                    return;
+                }
+                const parties = [ownerAztecAddress, secondAztecAddress];
+                logMessage(`Owner (${ownerAztecAddress.toString()}) withdrawing ${WITHDRAW_AMOUNT_FROM_CUSTODY} from custody ID ${custodyId.toString()}...`);
+                await psymm.withWallet(ownerWallet).methods
+                    .custody_to_address(custodyId, parties, 0, WITHDRAW_AMOUNT_FROM_CUSTODY, withdrawNonceFromCustody)
+                    .send()
+                    .wait();
+                logMessage(`Transferred ${WITHDRAW_AMOUNT_FROM_CUSTODY} tokens from custody ID ${custodyId.toString()} to address ${ownerAztecAddress.toString()}.`);
+                updateActionStatus(actionKey, "Withdrawn from Custody");
+            } catch (e) { handleError(e, "Withdraw from Custody");
+            } finally { actionButtons.withdrawFromCustody.disabled = false; }
+        });
+
+        actionButtons.checkFinalBalances.addEventListener('click', async () => {
+            const actionKey = 'checkFinal';
+            updateActionStatus(actionKey, "Processing...");
+            actionButtons.checkFinalBalances.disabled = true;
+            try {
+                if (!custodyId) {
+                    logMessage("Custody ID not set.", true);
+                    updateActionStatus(actionKey, "Error: Custody ID missing");
+                    return;
+                }
+                logMessage("Checking final balances...");
+                const finalCustodyOwner = await psymm.methods.custody_balance(custodyId, ownerAztecAddress).simulate();
+                logMessage(`Final Custody balance for ID ${custodyId.toString()} (Owner's view): ${finalCustodyOwner}`);
+
+                const finalCustodySecond = await psymm.withWallet(secondWallet).methods.custody_balance(custodyId, ownerAztecAddress).simulate();
+                logMessage(`Final Custody balance for ID ${custodyId.toString()} (Second User's view of Owner's): ${finalCustodySecond}`);
+
+                const ownerL2Balance = await l2Token.methods.balance_of_private(ownerAztecAddress).simulate();
+                logMessage(`Owner's final private L2 balance: ${ownerL2Balance}`);
+                updateActionStatus(actionKey, `Custody: ${finalCustodyOwner}, L2 Bal: ${ownerL2Balance}`);
+            } catch (e) { handleError(e, "Check Final Balances");
+            } finally { actionButtons.checkFinalBalances.disabled = false; }
+        });
+
+        actionButtons.dummyTxs2.addEventListener('click', () => sendDummyTxs('2'));
+
+        actionButtons.withdrawToL1.addEventListener('click', async () => {
+            const actionKey = 'withdrawL1';
+            updateActionStatus(actionKey, "Processing...");
+            actionButtons.withdrawToL1.disabled = true;
+            try {
+                await initializeManagers(); // Ensure managers are ready
+                const nonce = Fr.random();
+                logMessage(`Initiating withdrawal of ${L1_WITHDRAW_AMOUNT} tokens from L2 to L1 for ${ownerEthAddress.toString()}...`);
+
+                const authwitBurn = await ownerWallet.createAuthWit({
+                    caller: l2Bridge.address,
+                    action: l2Token.methods.burn_private(ownerAztecAddress, L1_WITHDRAW_AMOUNT, nonce),
+                });
+                logMessage('Private authwit created for L2 withdrawal burn.');
+
+                const l2ToL1MessageLeaf = await l1PortalManager.getL2ToL1MessageLeaf(
+                    L1_WITHDRAW_AMOUNT,
+                    ownerEthAddress, // recipient on L1
+                    l2Bridge.address, // caller on L2 (TokenBridge)
+                    EthAddress.ZERO   // refundee on L1 (not used here)
+                );
+
+                const l2TxReceipt = await l2Bridge.methods
+                    .exit_to_l1_private(l2Token.address, ownerEthAddress, L1_WITHDRAW_AMOUNT, EthAddress.ZERO, nonce)
+                    .send({ authWitnesses: [authwitBurn] })
+                    .wait();
+                logMessage('Withdrawal initiated on L2 privately. Tx hash: ' + l2TxReceipt.txHash.toString());
+
+                const newL2Balance = await l2Token.methods.balance_of_private(ownerAztecAddress).simulate();
+                logMessage(`New L2 balance of ${ownerAztecAddress.toString()} is ${newL2Balance}`);
+
+                logMessage("Waiting for L2 to L1 message to be consumable (may take time for block to be proven)...");
+                // This part can be tricky in a live demo due to proving times.
+                // For local testnets, it might be faster.
+                // Polling for message consumption or relying on a fixed delay might be needed.
+                // For now, we'll try to get the witness immediately. This might fail if the block isn't proven.
+                // A robust solution would poll getL2ToL1MembershipWitness or check node status.
+
+                // Wait a bit for the block to be processed by the node, adjust as needed for your setup
+                await new Promise(resolve => setTimeout(resolve, 15000)); // 15 seconds delay
+
+                const currentBlockNumber = await pxe.getBlockNumber();
+                logMessage(`Current L2 block number: ${currentBlockNumber}. Withdrawal was in block ${l2TxReceipt.blockNumber}`);
+
+                const [l2ToL1MessageIndex, siblingPath] = await pxe.getL2ToL1MembershipWitness(
+                    l2TxReceipt.blockNumber, // Use the block number from the L2 tx receipt
+                    l2ToL1MessageLeaf,
+                );
+                logMessage(`L2 to L1 message witness obtained. Index: ${l2ToL1MessageIndex}, Path Root: ${siblingPath.root.toString()}`);
+
+                await l1PortalManager.withdrawFunds(
+                    L1_WITHDRAW_AMOUNT,
+                    ownerEthAddress,
+                    BigInt(l2TxReceipt.blockNumber),
+                    l2ToL1MessageIndex,
+                    siblingPath,
+                );
+                logMessage('Withdrawal completed on L1.');
+
+                const newL1Balance = await l1TokenManager.getL1TokenBalance(ownerEthAddress);
+                logMessage(`New L1 balance of ${ownerEthAddress.toString()} is ${newL1Balance}`);
+                updateActionStatus(actionKey, `Withdrawn to L1. L1 Bal: ${newL1Balance}`);
+
+            } catch (e) { handleError(e, "Withdraw L2->L1");
+            } finally { actionButtons.withdrawToL1.disabled = false; }
+        });
+
+        // Initial UI state
+        Object.values(actionButtons).forEach(btn => btn.disabled = true);
+        initPxeButton.disabled = true;
+        deployContractsButton.disabled = true;
+
+        // Contract import/export functionality
+        const contractsJson = document.getElementById('contractsJson');
+        const exportContractsButton = document.getElementById('exportContractsButton');
+        const importContractsButton = document.getElementById('importContractsButton');
+        const importContractsInput = document.getElementById('importContractsInput');
+
+        function updateContractsJson(contracts) {
+            if (!contracts) {
+                contractsJson.textContent = 'No contracts deployed yet';
+                exportContractsButton.disabled = true;
+                return;
+            }
+            contractsJson.textContent = JSON.stringify(contracts, null, 2);
+            exportContractsButton.disabled = false;
+        }
+
+        exportContractsButton.addEventListener('click', () => {
+            const contracts = {
+                l2Token: l2Token?.address.toString(),
+                psymm: psymm?.address.toString(),
+                l1Token: l1Token?.toString(),
+                feeAssetHandler: feeAssetHandler?.toString(),
+                l1Portal: l1Portal?.toString(),
+                l2Bridge: l2Bridge?.address.toString()
+            };
+            const blob = new Blob([JSON.stringify(contracts, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'contracts.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        importContractsButton.addEventListener('click', () => {
+            importContractsInput.click();
+        });
+
+        importContractsInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const contracts = JSON.parse(e.target.result);
+                        updateContractsJson(contracts);
+                        contractAddressesDiv.innerHTML = `
+                            <p>L2 Token: ${contracts.l2Token}</p>
+                            <p>pSymm: ${contracts.psymm}</p>
+                            <p>L1 Token: ${contracts.l1Token}</p>
+                            <p>Fee Asset Handler: ${contracts.feeAssetHandler}</p>
+                            <p>L1 Portal: ${contracts.l1Portal}</p>
+                            <p>L2 Bridge: ${contracts.l2Bridge}</p>
+                        `;
+                        
+                        // Create contract instances
+                        logMessage("Creating contract instances from imported addresses...");
+                        
+                        Promise.resolve().then(async () => {
+                            try {
+                                // Create L2 Token instance
+                                l2Token = await TokenContract.at(contracts.l2Token, ownerWallet);
+                                logMessage("L2 Token contract instance created");
+                                
+                                // Create pSymm instance  
+                                psymm = await pSymmContract.at(contracts.psymm, ownerWallet);
+                                logMessage("pSymm contract instance created");
+                                
+                                // Create L2 Bridge instance
+                                l2Bridge = await TokenBridgeContract.at(contracts.l2Bridge, ownerWallet);
+                                logMessage("L2 Bridge contract instance created");
+                                
+                                // Store L1 addresses
+                                l1Token = EthAddress.fromString(contracts.l1Token);
+                                feeAssetHandler = EthAddress.fromString(contracts.feeAssetHandler);
+                                l1Portal = EthAddress.fromString(contracts.l1Portal);
+                                
+                                // Initialize L1 managers
+                                await initializeManagers();
+                                logMessage("L1 managers initialized with imported addresses");
+
+                                // Enable action buttons
+                                Object.values(actionButtons).forEach(btn => btn.disabled = false);
+                                updateDeployStatus("Contracts imported and initialized successfully!");
+                                logMessage("Imported and initialized contract instances - Actions unlocked");
+                            } catch (err) {
+                                logMessage("Error initializing contract instances: " + err.message, true);
+                            }
+                        });
+                    } catch (err) {
+                        logMessage("Error importing contracts: " + err.message, true);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // Update the deployment success handler to also update the JSON view
+        const originalDeployStatus = updateDeployStatus;
+        updateDeployStatus = function(message) {
+            originalDeployStatus(message);
+            if (message === "All contracts deployed successfully!") {
+                const contracts = {
+                    l2Token: l2Token.address.toString(),
+                    psymm: psymm.address.toString(),
+                    l1Token: l1Token.toString(),
+                    feeAssetHandler: feeAssetHandler.toString(),
+                    l1Portal: l1Portal.toString(),
+                    l2Bridge: l2Bridge.address.toString()
+                };
+                updateContractsJson(contracts);
+            }
+        };
+
+        logMessage("Page loaded. Please initialize.");
+
+    </script>
+</body>
 </html>
