@@ -18,7 +18,7 @@ import * as fs from 'fs';
 
 const MNEMONIC = 'test test test test test test test test test test test junk';
 const { ETHEREUM_HOSTS = 'http://localhost:8545' } = process.env;
-const MINT_AMOUNT = BigInt(1e4);
+const MINT_AMOUNT = BigInt(200 * 10**18);
 
 const { walletClient, publicClient } = createL1Clients(ETHEREUM_HOSTS.split(','), MNEMONIC);
 const ownerEthAddress = walletClient.account.address;
@@ -87,8 +87,7 @@ async function main() {
   const config = await psymmContract.methods.get_config().simulate();
   logger.info(`pSymm config: token address = ${config.token}`);
 
-  // Transfer tokens to custody ID 0 privately
-  const transferAmount = BigInt(100);
+  const transferAmount = BigInt(100 * 10**18);
   // Import poseidon2Hash dynamically
   const { poseidon2Hash } = await import("@zkpassport/poseidon2");
 
@@ -121,7 +120,7 @@ async function main() {
   logger.info(`Custody balance for ID ${custodyId} from second user's view is ${custodyBalance2}`);
 
   // Transfer tokens from custody ID 0 back to address
-  const withdrawAmount = BigInt(50);
+  const withdrawAmount = BigInt(50 * 10**18);
   const withdrawNonce = Fr.random();
 
   // Get approval from counterparty first
@@ -157,7 +156,7 @@ async function main() {
 
 
   // Setup withdrawal to L1
-  const l1WithdrawAmount = 50n;
+  const l1WithdrawAmount = BigInt(50 * 10**18);
   const nonce = Fr.random();
 
   // Create private authwit for withdrawal

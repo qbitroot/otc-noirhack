@@ -64,7 +64,7 @@ pub contract pSymm {
         custody_id: Field,
         parties: [AztecAddress; MAX_PARTIES],
         sender_idx: u32,
-        amount: u64, 
+        amount: u128, 
         nonce: Field
     ) {
         let mut fields = [0; MAX_PARTIES];
@@ -89,7 +89,7 @@ pub contract pSymm {
     fn approve_withdrawal(
         to: AztecAddress,
         custody_id: Field,
-        amount: u64,
+        amount: u128,
         nonce: Field
     ) {
         storage.custody_map.at(custody_id).add_withdraw_confirm(
@@ -106,7 +106,7 @@ pub contract pSymm {
         custody_id: Field,
         parties: [AztecAddress; MAX_PARTIES],
         receiver_idx: u32,
-        amount: u64,
+        amount: u128,
         nonce: Field
     ) {
         // Check total custody balance is positive before withdrawal

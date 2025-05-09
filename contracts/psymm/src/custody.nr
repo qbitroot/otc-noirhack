@@ -98,12 +98,12 @@ impl<Context> Custody<Context> {
 
 
 impl Custody<&mut PrivateContext> {
-    pub fn add_deposit(self, amount: u64, party: AztecAddress, owner: AztecAddress) {
+    pub fn add_deposit(self, amount: u128, party: AztecAddress, owner: AztecAddress) {
         let note = DepositNote::new(party, amount as Field, owner, true);
         self.set.insert(note).emit(encode_and_encrypt_note(self.context, owner, owner));
     }
 
-    pub fn add_withdrawal(self, amount: u64, party: AztecAddress, owner: AztecAddress) {
+    pub fn add_withdrawal(self, amount: u128, party: AztecAddress, owner: AztecAddress) {
         let note = DepositNote::new(party, amount as Field, owner, false);
         self.set.insert(note).emit(encode_and_encrypt_note(self.context, owner, owner));
     }

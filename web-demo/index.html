@@ -154,7 +154,7 @@
         } from '@aztec/l1-artifacts';
         import { TokenContract } from '@aztec/noir-contracts.js/Token';
         import { TokenBridgeContract } from '@aztec/noir-contracts.js/TokenBridge';
-        import { pSymmContract } from './contracts/psymm/src/artifacts/pSymm';
+        import { pSymmContract } from '../contracts/psymm/src/artifacts/pSymm';
 
 
         import { createWalletClient, createPublicClient, http, custom, getContract } from 'viem';
@@ -175,10 +175,10 @@
         let l1ContractAddressesNodeInfo; // from pxe.getNodeInfo()
         let l2Token, psymm, l1Token, feeAssetHandler, l1Portal, l2Bridge; // Contract instances/addresses
 
-        const MINT_AMOUNT = BigInt(10000); // Assuming 18 decimals for ERC20
-        const TRANSFER_AMOUNT_TO_CUSTODY = BigInt(100);
-        const WITHDRAW_AMOUNT_FROM_CUSTODY = BigInt(50);
-        const L1_WITHDRAW_AMOUNT = BigInt(50);
+        const MINT_AMOUNT = BigInt(200 * 10**18); // Assuming 18 decimals for ERC20
+        const TRANSFER_AMOUNT_TO_CUSTODY = BigInt(100 * 10 ** 18);
+        const WITHDRAW_AMOUNT_FROM_CUSTODY = BigInt(50 * 10 ** 18);
+        const L1_WITHDRAW_AMOUNT = BigInt(50 * 10**18);
 
 
         // --- UI Elements ---
@@ -326,7 +326,7 @@
 
                 // Deploy L2 token contract
                 logMessage("Deploying L2 TokenContract...");
-                l2Token = await TokenContract.deploy(ownerWallet, ownerAztecAddress, 'L2 Token', 'L2', 18)
+                l2Token = await TokenContract.deploy(ownerWallet, ownerAztecAddress, 'L2 Token', 'L2', 6)
                     .send()
                     .deployed();
                 logMessage(`L2 TokenContract deployed at ${l2Token.address.toString()}`);
@@ -672,9 +672,10 @@
                 const finalCustodySecond = await psymm.withWallet(secondWallet).methods.custody_balance(custodyId, ownerAztecAddress).simulate();
                 logMessage(`Final Custody balance for ID ${custodyId.toString()} (Second User's view of Owner's): ${finalCustodySecond}`);
 
-                const ownerL2Balance = await l2Token.methods.balance_of_private(ownerAztecAddress).simulate();
-                logMessage(`Owner's final private L2 balance: ${ownerL2Balance}`);
-                updateActionStatus(actionKey, `Custody: ${finalCustodyOwner}, L2 Bal: ${ownerL2Balance}`);
+                const ownerL2PrivateBalance = await l2Token.methods.balance_of_private(ownerAztecAddress).simulate();
+                const ownerL2PublicBalance = await l2Token.methods.balance_of_public(ownerAztecAddress).simulate();
+                logMessage(`Owner's final L2 balances - Private: ${ownerL2PrivateBalance}, Public: ${ownerL2PublicBalance}`);
+                updateActionStatus(actionKey, `Custody: ${finalCustodyOwner}, L2 Private: ${ownerL2PrivateBalance}, Public: ${ownerL2PublicBalance}`);
             } catch (e) { handleError(e, "Check Final Balances");
             } finally { actionButtons.checkFinalBalances.disabled = false; }
         });
