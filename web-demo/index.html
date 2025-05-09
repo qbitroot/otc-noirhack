@@ -712,58 +712,53 @@
             actionButtons.withdrawToL1.disabled = true;
             try {
                 await initializeManagers(); // Ensure managers are ready
+
+                // First transfer to private balance
+                await l2Token.methods.transfer_to_private(ownerAztecAddress, L1_WITHDRAW_AMOUNT).send().wait();
+                logMessage('Transferred to private balance before withdrawal');
+
+                // Setup withdrawal to L1
                 const nonce = Fr.random();
-                logMessage(`Initiating withdrawal of ${L1_WITHDRAW_AMOUNT} tokens from L2 to L1 for ${ownerEthAddress.toString()}...`);
+                
+                // Create private authwit for withdrawal
+                const authwit = await ownerWallet.createAuthWit(
+                    {
+                        caller: l2Bridge.address,
+                        action: l2Token.methods.burn_private(ownerAztecAddress, L1_WITHDRAW_AMOUNT, nonce),
+                    },
+                );
+                logMessage('Private authwit created for L2 withdrawal burn');
 
-                const authwitBurn = await ownerWallet.createAuthWit({
-                    caller: l2Bridge.address,
-                    action: l2Token.methods.burn_private(ownerAztecAddress, L1_WITHDRAW_AMOUNT, nonce),
-                });
-                logMessage('Private authwit created for L2 withdrawal burn.');
-
-                const l2ToL1MessageLeaf = await l1PortalManager.getL2ToL1MessageLeaf(
+                // Start withdrawal process on Aztec (L2)
+                const l2ToL1Message = await l1PortalManager.getL2ToL1MessageLeaf(
                     L1_WITHDRAW_AMOUNT,
-                    ownerEthAddress, // recipient on L1
-                    l2Bridge.address, // caller on L2 (TokenBridge)
-                    EthAddress.ZERO   // refundee on L1 (not used here)
+                    ownerEthAddress,
+                    l2Bridge.address,
+                    EthAddress.ZERO,
                 );
 
                 const l2TxReceipt = await l2Bridge.methods
-                    .exit_to_l1_private(l2Token.address, ownerEthAddress.toString(), L1_WITHDRAW_AMOUNT, EthAddress.ZERO, nonce)
-                    .send({ authWitnesses: [authwitBurn] })
+                    .exit_to_l1_private(l2Token.address, ownerEthAddress, L1_WITHDRAW_AMOUNT, EthAddress.ZERO, nonce)
+                    .send({ authWitnesses: [authwit] })
                     .wait();
-                logMessage('Withdrawal initiated on L2 privately. Tx hash: ' + l2TxReceipt.txHash.toString());
+                logMessage('Withdrawal initiated on L2 privately');
 
                 const newL2Balance = await l2Token.methods.balance_of_private(ownerAztecAddress).simulate();
-                logMessage(`New L2 balance of ${ownerAztecAddress.toString()} is ${newL2Balance}`);
+                logMessage(`New L2 balance of ${ownerAztecAddress} is ${newL2Balance}`);
 
-                logMessage("Waiting for L2 to L1 message to be consumable (may take time for block to be proven)...");
-                // This part can be tricky in a live demo due to proving times.
-                // For local testnets, it might be faster.
-                // Polling for message consumption or relying on a fixed delay might be needed.
-                // For now, we'll try to get the witness immediately. This might fail if the block isn't proven.
-                // A robust solution would poll getL2ToL1MembershipWitness or check node status.
-
-                // Wait a bit for the block to be processed by the node, adjust as needed for your setup
-                await new Promise(resolve => setTimeout(resolve, 15000)); // 15 seconds delay
-
-                const currentBlockNumber = await pxe.getBlockNumber();
-                logMessage(`Current L2 block number: ${currentBlockNumber}. Withdrawal was in block ${l2TxReceipt.blockNumber}`);
-
+                // Complete withdrawal process on L1
                 const [l2ToL1MessageIndex, siblingPath] = await pxe.getL2ToL1MembershipWitness(
-                    l2TxReceipt.blockNumber, // Use the block number from the L2 tx receipt
-                    l2ToL1MessageLeaf,
+                    await pxe.getBlockNumber(),
+                    l2ToL1Message,
                 );
-                logMessage(`L2 to L1 message witness obtained. Index: ${l2ToL1MessageIndex}`);
-
                 await l1PortalManager.withdrawFunds(
                     L1_WITHDRAW_AMOUNT,
-                    ownerEthAddress.toString(),
+                    ownerEthAddress,
                     BigInt(l2TxReceipt.blockNumber),
                     l2ToL1MessageIndex,
                     siblingPath,
                 );
-                logMessage('Withdrawal completed on L1.');
+                logMessage('Withdrawal completed on L1');
 
                 const newL1Balance = await l1TokenManager.getL1TokenBalance(ownerEthAddress.toString());
                 logMessage(`New L1 balance of ${ownerEthAddress.toString()} is ${newL1Balance}`);

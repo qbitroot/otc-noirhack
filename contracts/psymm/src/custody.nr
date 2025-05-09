@@ -129,6 +129,7 @@ impl Custody<&mut PrivateContext> {
     }
 
     pub fn get_balance_from(self, from: AztecAddress, party: AztecAddress) -> Field {
+        // TODO: fix overflow after withdrawal (it's a view-only function so no security issue)
         let mut balance = 0;
         let notes = self.set.get_notes(NoteGetterOptions::new());
 
