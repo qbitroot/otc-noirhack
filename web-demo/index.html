@@ -175,10 +175,11 @@
         let l1ContractAddressesNodeInfo; // from pxe.getNodeInfo()
         let l2Token, psymm, l1Token, feeAssetHandler, l1Portal, l2Bridge; // Contract instances/addresses
 
-        const MINT_AMOUNT = BigInt(200 * 10**18); // Assuming 18 decimals for ERC20
+        const MINT_AMOUNT = BigInt(100 * 10**18); // Assuming 18 decimals for ERC20
         const TRANSFER_AMOUNT_TO_CUSTODY = BigInt(100 * 10 ** 18);
-        const WITHDRAW_AMOUNT_FROM_CUSTODY = BigInt(50 * 10 ** 18);
-        const L1_WITHDRAW_AMOUNT = BigInt(50 * 10**18);
+        // const TOTAL_CUSTODY_AMOUNT = TRANSFER_AMOUNT_TO_CUSTODY * 2n;
+        const WITHDRAW_AMOUNT_FROM_CUSTODY = BigInt(125 * 10 ** 18);
+        const L1_WITHDRAW_AMOUNT = BigInt(125 * 10**18);
 
 
         // --- UI Elements ---
@@ -481,9 +482,13 @@
                 await initializeManagers();
                 logMessage(`Bridging ${MINT_AMOUNT} tokens from L1 to L2 for ${ownerAztecAddress.toString()}...`);
                 try {
-                    bridgeClaimDetails = await l1PortalManager.bridgeTokensPrivate(ownerAztecAddress, MINT_AMOUNT, true);
-                    logMessage(`Tokens bridged from L1 to L2. Claim Secret: ${bridgeClaimDetails.claimSecret.toString()}, Leaf Index: ${bridgeClaimDetails.messageLeafIndex}`);
-                    updateActionStatus(actionKey, `Bridged ${MINT_AMOUNT} tokens`);
+                    // Bridge full amount to each wallet (contract requires 200 per mint)
+                    bridgeClaimDetails = {
+                        owner: await l1PortalManager.bridgeTokensPrivate(ownerAztecAddress, MINT_AMOUNT, true),
+                        second: await l1PortalManager.bridgeTokensPrivate(secondAztecAddress, MINT_AMOUNT, true)
+                    };
+                    logMessage(`Tokens bridged from L1 to L2. Owner Claim: ${bridgeClaimDetails.owner.claimSecret.toString()}, Second Claim: ${bridgeClaimDetails.second.claimSecret.toString()}`);
+                    updateActionStatus(actionKey, `Bridged ${MINT_AMOUNT} to each wallet`);
                     
                     // Enable the next action buttons
                     actionButtons.dummyTxs1.disabled = false;
@@ -525,13 +530,22 @@
                     return;
                 }
                 logMessage(`Claiming tokens on L2 for ${ownerAztecAddress.toString()}...`);
+                // Claim both transfers
+                const claimAmount = MINT_AMOUNT; // Claim full 200 for each
                 await l2Bridge.methods
-                    .claim_private(ownerAztecAddress, MINT_AMOUNT, bridgeClaimDetails.claimSecret, bridgeClaimDetails.messageLeafIndex)
+                    .claim_private(ownerAztecAddress, claimAmount, bridgeClaimDetails.owner.claimSecret, bridgeClaimDetails.owner.messageLeafIndex)
                     .send()
                     .wait();
-                const balance = await l2Token.methods.balance_of_private(ownerAztecAddress).simulate();
-                logMessage(`Tokens claimed. Private L2 balance of ${ownerAztecAddress.toString()} is ${balance}`);
-                updateActionStatus(actionKey, `Claimed. Balance: ${balance}`);
+                logMessage(`Claiming tokens on L2 for ${secondAztecAddress.toString()}...`);
+                await l2Bridge.methods
+                    .claim_private(secondAztecAddress, claimAmount, bridgeClaimDetails.second.claimSecret, bridgeClaimDetails.second.messageLeafIndex)
+                    .send()
+                    .wait();
+                
+                const ownerBalance = await l2Token.methods.balance_of_private(ownerAztecAddress).simulate();
+                const secondBalance = await l2Token.methods.balance_of_private(secondAztecAddress).simulate();
+                logMessage(`Tokens claimed. Owner balance: ${ownerBalance}, Second wallet balance: ${secondBalance}`);
+                updateActionStatus(actionKey, `Claimed. Owner: ${ownerBalance}, Second: ${secondBalance}`);
             } catch (e) { handleError(e, "Claim L2 Tokens");
             } finally { actionButtons.claimTokens.disabled = false; }
         });
@@ -573,17 +587,27 @@
 
                 logMessage(`Generated Custody ID: ${custodyId.toString()} for parties ${ownerAztecAddress.toString()} and ${secondAztecAddress.toString()}`);
 
-                const authWitMsgHash = await ownerWallet.createAuthWit({
+                // Create authwits for both owner and second wallet
+                const ownerAuthWit = await ownerWallet.createAuthWit({
                     caller: psymm.address,
                     action: l2Token.methods.transfer_to_public(ownerAztecAddress, psymm.address, TRANSFER_AMOUNT_TO_CUSTODY, transferNonceToCustody),
                 });
-                logMessage('Private authwit created for L2 transfer to custody.');
+                const secondAuthWit = await secondWallet.createAuthWit({
+                    caller: psymm.address,
+                    action: l2Token.methods.transfer_to_public(secondAztecAddress, psymm.address, TRANSFER_AMOUNT_TO_CUSTODY, transferNonceToCustody),
+                });
+                logMessage('Private authwits created for both wallets');
 
+                // Transfer from both wallets to custody
                 await psymm.methods
                     .address_to_custody(custodyId, parties, 0, TRANSFER_AMOUNT_TO_CUSTODY, transferNonceToCustody)
-                    .send({ authWitnesses: [authWitMsgHash] })
+                    .send({ authWitnesses: [ownerAuthWit] })
                     .wait();
-                logMessage(`Transferred ${TRANSFER_AMOUNT_TO_CUSTODY} tokens to custody ID ${custodyId.toString()} privately.`);
+                await psymm.withWallet(secondWallet).methods
+                    .address_to_custody(custodyId, parties, 1, TRANSFER_AMOUNT_TO_CUSTODY, transferNonceToCustody)
+                    .send({ authWitnesses: [secondAuthWit] })
+                    .wait();
+                logMessage(`Transferred ${TRANSFER_AMOUNT_TO_CUSTODY} tokens from both wallets to custody ID ${custodyId.toString()} privately.`);
                 updateActionStatus(actionKey, `Transferred to custody ${custodyId.toString().substring(0,10)}...`);
             } catch (e) { handleError(e, "Transfer to Custody");
             } finally { actionButtons.transferToCustody.disabled = false; }
