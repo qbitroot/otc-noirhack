@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aztec OTC Interactive Demo</title>
+    <title>pSymm Interactive Demo</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
         .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
@@ -24,7 +24,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>Aztec OTC Interactive Demo</h1>
+        <h1>pSymm Interactive Demo</h1>
 
         <h2>1. Initialization</h2>
         <div>
@@ -58,7 +58,7 @@
         </div>
 
 
-        <h2>3. OTC Scenario Actions</h2>
+        <h2>3. Using pSymm - OTC scenario</h2>
         <div class="action-section">
             <table>
                 <thead>
@@ -71,7 +71,7 @@
                 <tbody>
                     <tr>
                         <td><strong>Logon & Collateralization:</strong><br>
-                        Trader makes an onchain deposit through TokenPortal and sends a Logon message (including the deposit proof) to the Solver.<br><br>
+                        Trader makes an onchain deposit through TokenPortal and sends a Logon message (including the deposit proof) to the PartyB (Solver).<br><br>
                         Bridge Tokens L1 to L2 (Private)</td>
                         <td id="actionStatus_bridge">Pending</td>
                         <td><button id="bridgeTokensButton" disabled>Bridge Tokens</button></td>
@@ -90,13 +90,13 @@
                         <td id="actionStatus_claim">Pending</td>
                         <td><button id="claimTokensButton" disabled>Claim Tokens</button></td>
                     </tr>
-                    <tr>
-                        <td><strong>Contract Verification:</strong><br>
-                        Verify the pSymm contract configuration and token settings.<br><br>
-                        Get pSymm Config</td>
-                        <td id="actionStatus_getConfig">Pending</td>
-                        <td><button id="getConfigButton" disabled>Get Config</button></td>
-                    </tr>
+                    <!-- <tr> -->
+                    <!--     <td><strong>Contract Verification:</strong><br> -->
+                    <!--     Verify the pSymm contract configuration and token settings.<br><br> -->
+                    <!--     Get pSymm Config</td> -->
+                    <!--     <td id="actionStatus_getConfig">Pending</td> -->
+                    <!--     <td><button id="getConfigButton" disabled>Get Config</button></td> -->
+                    <!-- </tr> -->
                     <tr>
                         <td><strong>Trading Setup:</strong><br>
                         Parties transfer their collateral to the custody contract privately to begin trading.<br><br>
@@ -113,15 +113,17 @@
                     </tr>
                     <tr>
                         <td><strong>Settlement - No Dispute:</strong><br>
-                        The counterparty approves withdrawal based on agreed PnL.<br><br>
-                        Approve Withdrawal from Custody (by Second User)</td>
+                        The counterparty approves withdrawal based on agreed PnL.<br>
+						In this example, we use +25% PnL for PartyA.<br><br>
+                        Approve Withdrawal from Custody (for PartyA by PartyB)</td>
                         <td id="actionStatus_approveWithdraw">Pending</td>
                         <td><button id="approveWithdrawalButton" disabled>Approve Withdrawal</button></td>
                     </tr>
                     <tr>
                         <td><strong>Settlement Execution:</strong><br>
-                        After approval, party can withdraw their funds (original collateral +/- PnL).<br><br>
-                        Withdraw from Custody to Address (by Owner)</td>
+                        After approval, party can withdraw their funds (original collateral +/- PnL).
+						<br><br>
+                        Withdraw from Custody to Address (by PartyA)</td>
                         <td id="actionStatus_fromCustody">Pending</td>
                         <td><button id="withdrawFromCustodyButton" disabled>Withdraw from Custody</button></td>
                     </tr>
@@ -132,13 +134,13 @@
                         <td id="actionStatus_checkFinal">Pending</td>
                         <td><button id="checkFinalBalancesButton" disabled>Check Final Balances</button></td>
                     </tr>
-                     <tr>
-                        <td><strong>Exit Processing:</strong><br>
-                        Advance L2->L1 message queue to prepare for withdrawal to L1.<br><br>
-                        Send 2 Dummy Txs (Advance L2->L1 Messages)</td>
-                        <td id="actionStatus_dummy2">Pending</td>
-                        <td><button id="dummyTxsButton2" disabled>Send Dummy Txs</button></td>
-                    </tr>
+                     <!-- <tr> -->
+                     <!--    <td><strong>Exit Processing:</strong><br> -->
+                     <!--    Advance L2->L1 message queue to prepare for withdrawal to L1.<br><br> -->
+                     <!--    Send 2 Dummy Txs (Advance L2->L1 Messages)</td> -->
+                     <!--    <td id="actionStatus_dummy2">Pending</td> -->
+                     <!--    <td><button id="dummyTxsButton2" disabled>Send Dummy Txs</button></td> -->
+                    <!-- </tr> -->
                     <tr>
                         <td><strong>Final Exit:</strong><br>
                         Withdraw settled funds back to L1 privately.<br><br>
@@ -219,13 +221,13 @@
             bridgeTokens: document.getElementById('bridgeTokensButton'),
             dummyTxs1: document.getElementById('dummyTxsButton1'),
             claimTokens: document.getElementById('claimTokensButton'),
-            getConfig: document.getElementById('getConfigButton'),
+            //getConfig: document.getElementById('getConfigButton'),
             transferToCustody: document.getElementById('transferToCustodyButton'),
             checkCustodyBalance: document.getElementById('checkCustodyBalanceButton'),
             approveWithdrawal: document.getElementById('approveWithdrawalButton'),
             withdrawFromCustody: document.getElementById('withdrawFromCustodyButton'),
             checkFinalBalances: document.getElementById('checkFinalBalancesButton'),
-            dummyTxs2: document.getElementById('dummyTxsButton2'),
+            //dummyTxs2: document.getElementById('dummyTxsButton2'),
             withdrawToL1: document.getElementById('withdrawToL1Button'),
         };
 
@@ -322,14 +324,14 @@
                 ownerAztecAddress = ownerWallet.getAddress();
                 secondAztecAddress = secondWallet.getAddress();
 
-                logger.info(`Owner Aztec Address: ${ownerAztecAddress.toString()}`);
-                logger.info(`Second User Aztec Address: ${secondAztecAddress.toString()}`);
+                logger.info(`PartyA Aztec Address: ${ownerAztecAddress.toString()}`);
+                logger.info(`PartyB Aztec Address: ${secondAztecAddress.toString()}`);
 
                 l1ContractAddressesNodeInfo = (await pxe.getNodeInfo()).l1ContractAddresses;
                 logger.info(`Fetched L1 contract addresses from PXE node: Registry @ ${l1ContractAddressesNodeInfo.registryAddress.toString()}`);
 
                 logMessage("PXE initialized successfully.");
-                updateInitStatus(`MetaMask & L1 OK. PXE OK. Owner: ${ownerAztecAddress.toString().substring(0,10)}...`);
+                updateInitStatus(`MetaMask & L1 OK. PXE OK. PartyA: ${ownerAztecAddress.toString().substring(0,10)}..., PartyB: ${secondAztecAddress.toString().substring(0,10)}...`);
                 deployContractsButton.disabled = false;
             } catch (e) {
                 handleError(e, "PXE Initialization");
@@ -349,7 +351,7 @@
 
                 // Deploy L2 token contract
                 logMessage("Deploying L2 TokenContract...");
-                l2Token = await TokenContract.deploy(ownerWallet, ownerAztecAddress, 'L2 Token', 'L2', 6)
+                l2Token = await TokenContract.deploy(ownerWallet, ownerAztecAddress, 'L2 Token', 'L2', 18)
                     .send()
                     .deployed();
                 logMessage(`L2 TokenContract deployed at ${l2Token.address.toString()}`);
@@ -509,7 +511,7 @@
                         owner: await l1PortalManager.bridgeTokensPrivate(ownerAztecAddress, MINT_AMOUNT, true),
                         second: await l1PortalManager.bridgeTokensPrivate(secondAztecAddress, MINT_AMOUNT, true)
                     };
-                    logMessage(`Tokens bridged from L1 to L2. Owner Claim: ${bridgeClaimDetails.owner.claimSecret.toString()}, Second Claim: ${bridgeClaimDetails.second.claimSecret.toString()}`);
+                    logMessage(`Tokens bridged from L1 to L2. PartyA Claim: ${bridgeClaimDetails.owner.claimSecret.toString()},  Claim: ${bridgeClaimDetails.second.claimSecret.toString()}`);
                     updateActionStatus(actionKey, `Bridged ${MINT_AMOUNT} to each wallet`);
                     
                     // Enable the next action buttons
@@ -566,12 +568,13 @@
                 
                 const ownerBalance = await l2Token.methods.balance_of_private(ownerAztecAddress).simulate();
                 const secondBalance = await l2Token.methods.balance_of_private(secondAztecAddress).simulate();
-                logMessage(`Tokens claimed. Owner balance: ${ownerBalance}, Second wallet balance: ${secondBalance}`);
-                updateActionStatus(actionKey, `Claimed. Owner: ${ownerBalance}, Second: ${secondBalance}`);
+                logMessage(`Tokens claimed. PartyA balance: ${ownerBalance},  wallet balance: ${secondBalance}`);
+                updateActionStatus(actionKey, `Claimed. PartyA: ${ownerBalance}, PartyB: ${secondBalance}`);
             } catch (e) { handleError(e, "Claim L2 Tokens");
             } finally { actionButtons.claimTokens.disabled = false; }
         });
 
+		/*
         actionButtons.getConfig.addEventListener('click', async () => {
             const actionKey = 'getConfig';
             updateActionStatus(actionKey, "Processing...");
@@ -584,6 +587,7 @@
             } catch (e) { handleError(e, "Get pSymm Config");
             } finally { actionButtons.getConfig.disabled = false; }
         });
+		*/
 
         let custodyId, transferNonceToCustody;
         actionButtons.transferToCustody.addEventListener('click', async () => {
@@ -593,8 +597,8 @@
             try {
                 logMessage(`Starting transfer to custody process...`);
                 logMessage(`Amount to transfer: ${TRANSFER_AMOUNT_TO_CUSTODY}`);
-                logMessage(`Owner address: ${ownerAztecAddress.toString()}`);
-                logMessage(`Second address: ${secondAztecAddress.toString()}`);
+                logMessage(`PartyA address: ${ownerAztecAddress.toString()}`);
+                logMessage(` address: ${secondAztecAddress.toString()}`);
                 logMessage(`pSymm contract address: ${psymm.address.toString()}`);
                 logMessage(`L2 token contract address: ${l2Token.address.toString()}`);
                 
@@ -630,7 +634,7 @@
                     .send({ authWitnesses: [secondAuthWit] })
                     .wait();
                 logMessage(`Transferred ${TRANSFER_AMOUNT_TO_CUSTODY} tokens from both wallets to custody ID ${custodyId.toString()} privately.`);
-                updateActionStatus(actionKey, `Transferred to custody ${custodyId.toString().substring(0,10)}...`);
+                updateActionStatus(actionKey, `Transferred to custody ID ${custodyId.toString().substring(0,10)}...`);
             } catch (e) { handleError(e, "Transfer to Custody");
             } finally { actionButtons.transferToCustody.disabled = false; }
         });
@@ -646,12 +650,12 @@
                     return;
                 }
                 logMessage(`Checking custody balance for ID ${custodyId.toString()}...`);
-                const custodyBalanceOwnerView = await psymm.methods.custody_balance(custodyId, ownerAztecAddress).simulate();
-                logMessage(`Custody balance for ID ${custodyId.toString()} (Owner's view): ${custodyBalanceOwnerView}`);
+                const custodyBalancePartyAView = await psymm.methods.custody_balance(custodyId, ownerAztecAddress).simulate();
+                logMessage(`Custody balance for ID ${custodyId.toString()} (PartyA's view): ${custodyBalancePartyAView}`);
 
-                const custodyBalanceSecondView = await psymm.withWallet(secondWallet).methods.custody_balance(custodyId, ownerAztecAddress).simulate();
-                logMessage(`Custody balance for ID ${custodyId.toString()} (Second User's view of Owner's balance): ${custodyBalanceSecondView}`);
-                updateActionStatus(actionKey, `Owner: ${custodyBalanceOwnerView}, SecondView: ${custodyBalanceSecondView}`);
+                //const custodyBalancePartyBView = await psymm.withWallet(secondWallet).methods.custody_balance(custodyId, ownerAztecAddress).simulate();
+                //logMessage(`Custody balance for ID ${custodyId.toString()} (PartyB's view): ${custodyBalancePartyBView}`);
+                updateActionStatus(actionKey, `Custody balance: ${custodyBalancePartyAView}`);
             } catch (e) { handleError(e, "Check Custody Balance");
             } finally { actionButtons.checkCustodyBalance.disabled = false; }
         });
@@ -668,13 +672,13 @@
                     return;
                 }
                 withdrawNonceFromCustody = Fr.random();
-                logMessage(`Second user (${secondAztecAddress.toString()}) approving withdrawal of ${WITHDRAW_AMOUNT_FROM_CUSTODY} for owner (${ownerAztecAddress.toString()})...`);
+                logMessage(` user (${secondAztecAddress.toString()}) approving withdrawal of ${WITHDRAW_AMOUNT_FROM_CUSTODY} for owner (${ownerAztecAddress.toString()})...`);
                 await psymm.withWallet(secondWallet).methods
                     .approve_withdrawal(ownerAztecAddress, custodyId, WITHDRAW_AMOUNT_FROM_CUSTODY, withdrawNonceFromCustody)
                     .send()
                     .wait();
                 logMessage(`Counterparty approved withdrawal of ${WITHDRAW_AMOUNT_FROM_CUSTODY} tokens. Nonce: ${withdrawNonceFromCustody.toString()}`);
-                updateActionStatus(actionKey, "Withdrawal Approved by Second User");
+                updateActionStatus(actionKey, "Withdrawal Approved by PartyB");
             } catch (e) { handleError(e, "Approve Withdrawal from Custody");
             } finally { actionButtons.approveWithdrawal.disabled = false; }
         });
@@ -690,7 +694,7 @@
                     return;
                 }
                 const parties = [ownerAztecAddress, secondAztecAddress];
-                logMessage(`Owner (${ownerAztecAddress.toString()}) withdrawing ${WITHDRAW_AMOUNT_FROM_CUSTODY} from custody ID ${custodyId.toString()}...`);
+                logMessage(`PartyA (${ownerAztecAddress.toString()}) withdrawing ${WITHDRAW_AMOUNT_FROM_CUSTODY} from custody ID ${custodyId.toString()}...`);
                 await psymm.withWallet(ownerWallet).methods
                     .custody_to_address(custodyId, parties, 0, WITHDRAW_AMOUNT_FROM_CUSTODY, withdrawNonceFromCustody)
                     .send()
@@ -712,21 +716,21 @@
                     return;
                 }
                 logMessage("Checking final balances...");
-                const finalCustodyOwner = await psymm.methods.custody_balance(custodyId, ownerAztecAddress).simulate();
-                logMessage(`Final Custody balance for ID ${custodyId.toString()} (Owner's view): ${finalCustodyOwner}`);
+                const finalCustodyPartyA = await psymm.methods.custody_balance(custodyId, ownerAztecAddress).simulate();
+                logMessage(`Final Custody balance for ID ${custodyId.toString()} (PartyA's view): ${finalCustodyPartyA}`);
 
-                const finalCustodySecond = await psymm.withWallet(secondWallet).methods.custody_balance(custodyId, ownerAztecAddress).simulate();
-                logMessage(`Final Custody balance for ID ${custodyId.toString()} (Second User's view of Owner's): ${finalCustodySecond}`);
+                //const finalCustodyPartyB = await psymm.withWallet(secondWallet).methods.custody_balance(custodyId, ownerAztecAddress).simulate();
+                // logMessage(`Final Custody balance for ID ${custodyId.toString()} ( PartyB's view of PartyA's): ${finalCustodyPartyB}`);
 
                 const ownerL2PrivateBalance = await l2Token.methods.balance_of_private(ownerAztecAddress).simulate();
                 const ownerL2PublicBalance = await l2Token.methods.balance_of_public(ownerAztecAddress).simulate();
-                logMessage(`Owner's final L2 balances - Private: ${ownerL2PrivateBalance}, Public: ${ownerL2PublicBalance}`);
-                updateActionStatus(actionKey, `Custody: ${finalCustodyOwner}, L2 Private: ${ownerL2PrivateBalance}, Public: ${ownerL2PublicBalance}`);
+                logMessage(`PartyA's final L2 balances - Private: ${ownerL2PrivateBalance}, Public: ${ownerL2PublicBalance}`);
+                updateActionStatus(actionKey, `Custody: ${finalCustodyPartyA}, PartyA: ${ownerL2PrivateBalance + ownerL2PublicBalance}`);
             } catch (e) { handleError(e, "Check Final Balances");
             } finally { actionButtons.checkFinalBalances.disabled = false; }
         });
 
-        actionButtons.dummyTxs2.addEventListener('click', () => sendDummyTxs('2'));
+        //actionButtons.dummyTxs2.addEventListener('click', () => sendDummyTxs('2'));
 
         actionButtons.withdrawToL1.addEventListener('click', async () => {
             const actionKey = 'withdrawL1';
@@ -784,7 +788,7 @@
 
                 const newL1Balance = await l1TokenManager.getL1TokenBalance(ownerEthAddress.toString());
                 logMessage(`New L1 balance of ${ownerEthAddress.toString()} is ${newL1Balance}`);
-                updateActionStatus(actionKey, `Withdrawn to L1. L1 Bal: ${newL1Balance}`);
+                updateActionStatus(actionKey, `Privately bridged to L1. L1 PartyA balance: ${newL1Balance}`);
 
             } catch (e) { handleError(e, "Withdraw L2->L1");
             } finally { actionButtons.withdrawToL1.disabled = false; }
