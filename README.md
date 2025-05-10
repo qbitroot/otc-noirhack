@@ -2,9 +2,11 @@
 
 pSymm -- private & symmetric OTC derivatives trading project. The idea is to allow two parties trade any asset in a trustless, permissionless, decentralized way. The high-level architecture of the platform:
 
-- pSymm: Aztec.nr L2 contract integrating TokenPortal.nr and SettleMaker.sol for both happy and disputed trading sessions.
-- SettleMaker: a dispute resolution contract. Uses validators, staking, slashing mechanism for voting on disputed trading sessions. To dispute a session, parties must reveal their trading activity.
+- pSymm: Aztec Noir L2 contract integrating TokenPortal.nr and SettleMaker.sol for both happy and disputed trading sessions.
 - Offchain infra: web UI utilizing MetaMask and Aztec PXE.
+- SettleMaker: a dispute resolution contract. Uses validators, staking, slashing mechanism for voting on disputed trading sessions. To dispute a session, parties must reveal their trading activity.
+
+This project will be part of [Symmio](https://www.symm.io/), bringing Aztec privacy to the existing platform.
 
 The high-level flow is like this:
 
@@ -19,3 +21,5 @@ The high-level flow is like this:
 5.  **Withdrawal/Settlement:**
     - **No Dispute:** The party owing PnL uses the CTC circuit to split their collateral commitment into two: one for the PnL amount and one for the remaining collateral. They privately send the secret data for the PnL commitment to the counterparty. Both parties can then withdraw their respective funds (original collateral +/- PnL) using the CTA circuit.
     - **Dispute:** One party initiates a dispute by revealing the entire signed message history to the SettleMaker contract. Validators review the session based on predefined rules and vote. The party found at fault is slashed.
+
+_Note: SettleMaker <> pSymm communication is WIP. The idea is to use inbox to consume SettleMaker message on L2 on withdraw._
