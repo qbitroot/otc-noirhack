@@ -1,5 +1,9 @@
 # pSymm
 
+[Presentation slides](https://qbitroot.github.io/noirhack)
+
+---
+
 pSymm -- private & symmetric OTC derivatives trading project. The idea is to allow two parties trade any asset in a trustless, permissionless, decentralized way. The high-level architecture of the platform:
 
 - pSymm: Aztec Noir L2 contract integrating TokenPortal.nr and SettleMaker.sol for both happy and disputed trading sessions.
@@ -28,7 +32,6 @@ Install dependencies:
 
 ```
 yarn && cd web-demo && yarn
-
 ```
 
 To test the project, run [Aztec Sandbox](https://aztec.network/sandbox):
