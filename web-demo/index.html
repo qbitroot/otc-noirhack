@@ -268,12 +268,48 @@
             }
             try {
                 logMessage("Connecting to MetaMask and initializing L1 clients...");
+                // Request accounts and check chain
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                
+                if (chainId !== '0x7a69') { // 0x7a69 is hex for 31337
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: '0x7a69' }],
+                        });
+                    } catch (switchError) {
+                        // This error code indicates that the chain has not been added to MetaMask
+                        if (switchError.code === 4902) {
+                            try {
+                                await window.ethereum.request({
+                                    method: 'wallet_addEthereumChain',
+                                    params: [{
+                                        chainId: '0x7a69',
+                                        chainName: 'Local Hardhat',
+                                        nativeCurrency: {
+                                            name: 'Ether',
+                                            symbol: 'ETH',
+                                            decimals: 18
+                                        },
+                                        rpcUrls: [ethHostInput.value],
+                                        blockExplorerUrls: null
+                                    }]
+                                });
+                            } catch (addError) {
+                                throw new Error(`Failed to add or switch to Local chain: ${addError.message}`);
+                            }
+                        } else {
+                            throw new Error(`Failed to switch to Local chain: ${switchError.message}`);
+                        }
+                    }
+                }
+
                 ownerEthAddress = EthAddress.fromString(accounts[0]);
 
                 // Create Viem clients using MetaMask provider
                 const chain = {
-                    id: 31337, // Default local chain ID
+                    id: 31337,
                     name: 'Local',
                     network: 'local',
                     nativeCurrency: {
