@@ -70,57 +70,79 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td>Bridge Tokens L1 to L2 (Private)</td>
+                        <td><strong>Logon & Collateralization:</strong><br>
+                        Trader makes an onchain deposit through TokenPortal and sends a Logon message (including the deposit proof) to the Solver.<br><br>
+                        Bridge Tokens L1 to L2 (Private)</td>
                         <td id="actionStatus_bridge">Pending</td>
                         <td><button id="bridgeTokensButton" disabled>Bridge Tokens</button></td>
                     </tr>
                     <tr>
-                        <td>Send 2 Dummy Txs (Advance L1->L2 Messages)</td>
+                        <td><strong>Message Processing:</strong><br>
+                        Advances the L1->L2 message queue to ensure deposits are processed.<br><br>
+                        Send 2 Dummy Txs (Advance L1->L2 Messages)</td>
                         <td id="actionStatus_dummy1">Pending</td>
                         <td><button id="dummyTxsButton1" disabled>Send Dummy Txs</button></td>
                     </tr>
                     <tr>
-                        <td>Claim Bridged Tokens on L2</td>
+                        <td><strong>Claim Deposits:</strong><br>
+                        After messages are processed, parties can claim their bridged tokens on L2.<br><br>
+                        Claim Bridged Tokens on L2</td>
                         <td id="actionStatus_claim">Pending</td>
                         <td><button id="claimTokensButton" disabled>Claim Tokens</button></td>
                     </tr>
                     <tr>
-                        <td>Get pSymm Config</td>
+                        <td><strong>Contract Verification:</strong><br>
+                        Verify the pSymm contract configuration and token settings.<br><br>
+                        Get pSymm Config</td>
                         <td id="actionStatus_getConfig">Pending</td>
                         <td><button id="getConfigButton" disabled>Get Config</button></td>
                     </tr>
                     <tr>
-                        <td>Transfer Tokens to Custody (Private)</td>
+                        <td><strong>Trading Setup:</strong><br>
+                        Parties transfer their collateral to the custody contract privately to begin trading.<br><br>
+                        Transfer Tokens to Custody (Private)</td>
                         <td id="actionStatus_toCustody">Pending</td>
                         <td><button id="transferToCustodyButton" disabled>Transfer to Custody</button></td>
                     </tr>
                     <tr>
-                        <td>Check Custody Balances</td>
+                        <td><strong>Balance Verification:</strong><br>
+                        Parties verify their collateral is correctly locked in custody.<br><br>
+                        Check Custody Balances</td>
                         <td id="actionStatus_checkCustody">Pending</td>
                         <td><button id="checkCustodyBalanceButton" disabled>Check Balances</button></td>
                     </tr>
                     <tr>
-                        <td>Approve Withdrawal from Custody (by Second User)</td>
+                        <td><strong>Settlement - No Dispute:</strong><br>
+                        The counterparty approves withdrawal based on agreed PnL.<br><br>
+                        Approve Withdrawal from Custody (by Second User)</td>
                         <td id="actionStatus_approveWithdraw">Pending</td>
                         <td><button id="approveWithdrawalButton" disabled>Approve Withdrawal</button></td>
                     </tr>
                     <tr>
-                        <td>Withdraw from Custody to Address (by Owner)</td>
+                        <td><strong>Settlement Execution:</strong><br>
+                        After approval, party can withdraw their funds (original collateral +/- PnL).<br><br>
+                        Withdraw from Custody to Address (by Owner)</td>
                         <td id="actionStatus_fromCustody">Pending</td>
                         <td><button id="withdrawFromCustodyButton" disabled>Withdraw from Custody</button></td>
                     </tr>
                     <tr>
-                        <td>Check Final Custody & L2 Balances</td>
+                        <td><strong>Final Verification:</strong><br>
+                        Verify final balances after settlement to ensure correct execution.<br><br>
+                        Check Final Custody & L2 Balances</td>
                         <td id="actionStatus_checkFinal">Pending</td>
                         <td><button id="checkFinalBalancesButton" disabled>Check Final Balances</button></td>
                     </tr>
                      <tr>
-                        <td>Send 2 Dummy Txs (Advance L2->L1 Messages)</td>
+                        <td><strong>Exit Processing:</strong><br>
+                        Advance L2->L1 message queue to prepare for withdrawal to L1.<br><br>
+                        Send 2 Dummy Txs (Advance L2->L1 Messages)</td>
                         <td id="actionStatus_dummy2">Pending</td>
                         <td><button id="dummyTxsButton2" disabled>Send Dummy Txs</button></td>
                     </tr>
                     <tr>
-                        <td>Withdraw Tokens L2 to L1 (Private)</td>
+                        <td><strong>Final Exit:</strong><br>
+                        Withdraw settled funds back to L1 privately.<br><br>
+                        Withdraw Tokens L2 to L1 (Private)</td>
                         <td id="actionStatus_withdrawL1">Pending</td>
                         <td><button id="withdrawToL1Button" disabled>Withdraw to L1</button></td>
                     </tr>
