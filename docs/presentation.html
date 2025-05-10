@@ -25,6 +25,9 @@
         .solution-point {
             color: #51cf66;
         }
+        i {
+            color: silver;
+        }
     </style>
 </head>
 <body>
@@ -43,7 +46,17 @@
                     <li class="problem-point">Current Trading Options are Suboptimal:</li>
                     <li>DEX: Complete exposure of trading activity</li>
                     <li>CEX: Loss of fund custody and control</li>
-                    <li>Traditional OTC: High costs, limited access</li>
+                    <li>Public orderbooks (CLOB/AMM):
+                        <ul>
+                            <li>No privacy, front-running risks</li>
+						</ul>
+					</li>
+                    <li>Existing OTC solutions
+                        <ul>
+                            <li>High costs and barriers to entry</li>
+                            <li>Limited access for smaller traders</li>
+                        </ul>
+                    </li>
                 </ul>
             </section>
 
@@ -53,9 +66,38 @@
                 <ul>
                     <li class="solution-point">Trade privately off-chain</li>
                     <li>Collateral secured on Aztec L2</li>
-                    <li>Trustless PnL settlement</li>
                     <li>Dispute resolution mechanism</li>
-                    <li>Full control over funds</li>
+					<li>P2P architecture enabling full private OTC</li>
+					<li>Trade any derivatives: perps, stocks, FX, ETFs</li>
+                </ul>
+            </section>
+
+            <!-- Problem: Case Study -->
+            <section>
+                <h2>Solution: Case Study</h2>
+				<p class="problem-point">Traditional DEX Scenario:</p>
+                <ul>
+                    <li>A whale wants to open a $300M+ position</li>
+                    <li>Using a DEX exposes their position to everyone</li>
+                    <li>Traders try to liquidate the position</li>
+                </ul>
+				<p class="solution-point">With pSymm:</p>
+                <ul>
+                    <li>Same whale opens $300M+ position privately</li>
+                    <li>With pSymm, executes trade off-chain</li>
+                    <li>Only trader and counterparty see the trade</li>
+                </ul>
+            </section>
+
+
+            <!-- Opportunity -->
+            <section>
+                <h2>Market Opportunity</h2>
+                <ul>
+                    <li>100x cost reduction enables new market participants</li>
+                    <li>Enabling small players to bypass traditional banking barriers</li>
+                    <li>Growing demand for private, trustless trading solutions</li>
+					<li><i>"In the future, DEX are gonna be bigger than CEX"</i><br> - <a target="_blank" href="https://www.youtube.com/watch?v=n1W5VbLFZtw&t=2795s">CZ, co-founder of Binance</a></li>
                 </ul>
             </section>
 
@@ -65,23 +107,18 @@
                 <p>...</p>
             </section>
 
-            <!-- Opportunity -->
-            <section>
-                <h2>Market Opportunity</h2>
-                <ul>
-                    <li>100x cost reduction enables new market participants</li>
-                    <li>Democratizing access to OTC trading</li>
-                    <li>Enabling small players to bypass traditional banking barriers</li>
-                    <li>Growing demand for private, trustless trading solutions</li>
-                </ul>
-            </section>
-
             <!-- Team -->
             <section>
                 <h2>Team</h2>
                 <div style="margin-top: 2em;">
                     <h3>Vlad</h3>
-                    <p>Working with Symm.io to bring private p2p trading to life</p>
+                    <p>Working with Symm.io to bring private p2p trading to life.</p>
+                    <h3>SYMMIO</h3>
+                    <ul>
+                        <li>Live with $11B+ trading volume</li>
+                        <li>320+ trading pairs with CEX-level liquidity</li>
+                        <li>Operating on 9 EVM DEXes</li>
+                    </ul>
                 </div>
             </section>
 
