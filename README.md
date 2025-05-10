@@ -1,7 +1,5 @@
 # pSymm
 
-[Presentation](https://web-user.neocities.org/)
-
 pSymm -- private & symmetric OTC derivatives trading project. The idea is to allow two parties trade any asset in a trustless, permissionless, decentralized way. The high-level architecture of the platform:
 
 - pSymm: Aztec.nr L2 contract integrating TokenPortal.nr and SettleMaker.sol for both happy and disputed trading sessions.
