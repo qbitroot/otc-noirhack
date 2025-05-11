@@ -120,7 +120,6 @@ pub contract pSymm {
         }
         let computed_id = hash(fields, MAX_PARTIES);
         assert(custody_id == computed_id);
-        let receiver = parties[receiver_idx];
         storage.custody_map.at(custody_id).add_withdrawal(amount, receiver, receiver);
         
         for i in 0..MAX_PARTIES {

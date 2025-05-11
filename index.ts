@@ -23,11 +23,6 @@ const TRANSFER_AMOUNT_TO_CUSTODY = BigInt(100 * 10**18);
 const WITHDRAW_AMOUNT_FROM_CUSTODY = BigInt(125 * 10**18);
 const L1_WITHDRAW_AMOUNT = BigInt(125 * 10**18);
 
-const MINT_AMOUNT = BigInt(100 * 10**18); // Amount per party
-const TRANSFER_AMOUNT_TO_CUSTODY = BigInt(100 * 10**18);
-const WITHDRAW_AMOUNT_FROM_CUSTODY = BigInt(125 * 10**18);
-const L1_WITHDRAW_AMOUNT = BigInt(125 * 10**18);
-
 const { walletClient, publicClient } = createL1Clients(ETHEREUM_HOSTS.split(','), MNEMONIC);
 const ownerEthAddress = walletClient.account.address;
 
