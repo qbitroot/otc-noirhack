@@ -11,7 +11,7 @@ import {
 } from '@aztec/l1-artifacts';
 import { TokenContract } from '@aztec/noir-contracts.js/Token';
 import { TokenBridgeContract } from '@aztec/noir-contracts.js/TokenBridge';
-import { pSymmContract } from './contracts/psymm/src/artifacts/pSymm';
+import { pSymmContract } from './contracts/aztec/psymm/src/artifacts/pSymm';
 import { getContract } from 'viem';
 import * as fs from 'fs';
 

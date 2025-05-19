@@ -8,7 +8,6 @@ import "./interfaces/ISettleMaker.sol";
 import "./interfaces/IEditSettlement.sol";
 import "./interfaces/IValidatorSettlement.sol";
 import "./interfaces/IBatchMetadataSettlement.sol";
-import "./interfaces/IUnresolvedListSettlement.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 contract SettleMaker is ISettleMaker, ReentrancyGuard {
@@ -163,18 +162,6 @@ contract SettleMaker is ISettleMaker, ReentrancyGuard {
         address validatorSettlement = IEditSettlement(editSettlementAddress)
             .validatorSettlementAddress();
         return IValidatorSettlement(validatorSettlement).verifyValidator(account);
-    }
-
-    function getCurrentUnresolvedRoot() external view returns (bytes32) {
-        address unresolvedListSettlement = IEditSettlement(editSettlementAddress)
-            .unresolvedListSettlementAddress();
-        return IUnresolvedListSettlement(unresolvedListSettlement).currentUnresolvedRoot();
-    }
-
-    function getCurrentUnresolvedDataHash() external view returns (bytes32) {
-        address unresolvedListSettlement = IEditSettlement(editSettlementAddress)
-            .unresolvedListSettlementAddress();
-        return IUnresolvedListSettlement(unresolvedListSettlement).currentDataHash();
     }
 }
 

@@ -40,8 +40,6 @@ interface ISettleMaker {
     function currentBatchWinner() external view returns (bytes32);
     function currentBatch() external view returns (uint256);
     function verifyValidator(address account) external view returns (bool);
-    function getCurrentUnresolvedRoot() external view returns (bytes32);
-    function getCurrentUnresolvedDataHash() external view returns (bytes32);
 
     // State changing functions
     function setEditSettlement(address newEditSettlement) external;
